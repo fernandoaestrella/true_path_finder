@@ -1,8 +1,7 @@
 'use client';
 
 import React, { useState, useEffect, use } from 'react';
-import { Button, Input, Textarea, Card, CardHeader, CardTitle, CardContent, CardFooter, TimerBar } from '@/components';
-import { useSessionTimer } from '@/lib/hooks/useSessionTimer';
+import { Button, Input, Textarea, Card, CardHeader, CardTitle, CardContent, CardFooter, Header } from '@/components';
 import { useAuth } from '@/lib/contexts/AuthContext';
 import { Method, Goal, Resource, SuggestedMinimum } from '@/types';
 import { collection, getDocs, addDoc, setDoc, deleteDoc, doc, getDoc, serverTimestamp, updateDoc, increment } from 'firebase/firestore';
@@ -12,8 +11,7 @@ type PageParams = Promise<{ goalId: string }>;
 
 export default function MethodsPage({ params }: { params: PageParams }) {
   const { goalId } = use(params);
-  const { user, isLoading: authLoading, logout } = useAuth();
-  const { minutes, seconds, isPaused } = useSessionTimer();
+  const { user, isLoading: authLoading } = useAuth();
   
   const [goal, setGoal] = useState<Goal | null>(null);
   const [methods, setMethods] = useState<Method[]>([]);
@@ -219,29 +217,15 @@ export default function MethodsPage({ params }: { params: PageParams }) {
   
   return (
     <div className="min-h-screen bg-[var(--background)]">
-      {/* Header */}
-      <header className="sticky top-0 z-30 pt-8 pb-6 bg-[var(--background)]">
-        <div className="container flex items-center justify-between">
-          <div className="flex items-center gap-4">
-            <a href="/goals" className="text-[var(--text-secondary)] hover:text-[var(--text-primary)] cursor-pointer">
-              ← Goals
-            </a>
-            <h1 className="text-xl font-bold text-[var(--text-primary)]">
-              Methods for: {goal?.title || 'Loading...'}
-            </h1>
-          </div>
-          
-          <div className="flex items-center gap-4">
-            <TimerBar minutes={minutes} seconds={seconds} isPaused={isPaused} />
-            <button onClick={logout} className="btn btn-ghost text-sm cursor-pointer">
-              Logout
-            </button>
-          </div>
-        </div>
-      </header>
+      <Header />
       
       {/* Main Content */}
       <main className="container py-8">
+        {/* Page Title */}
+        <h1 className="text-xl font-bold text-[var(--text-primary)] mb-6">
+          Methods for: {goal?.title || 'Loading...'}
+        </h1>
+        
         {/* Goal Description */}
         {goal?.description && (
           <div className="mb-6 p-4 bg-[var(--surface-subtle)] rounded-lg">

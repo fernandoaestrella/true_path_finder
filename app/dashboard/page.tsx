@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useState, useEffect } from 'react';
-import { TimerBar, LogoutIcon } from '@/components';
+import { Header } from '@/components';
 import { MethodsGrid } from '@/components/features/MethodsGrid';
 import { useSessionTimer } from '@/lib/hooks/useSessionTimer';
 import { useAuth } from '@/lib/contexts/AuthContext';
@@ -182,36 +182,18 @@ export default function DashboardPage() {
         </div>
       )}
       
-      {/* Header */}
-      <header className="sticky top-0 z-30 pt-8 pb-6 bg-[var(--background)]">
-        <div className="container flex items-center justify-between">
-          {/* Timer centered */}
-          <div className="flex-1"></div>
-          
-          <div className="flex items-center gap-2">
-            <TimerBar minutes={minutes} seconds={seconds} isPaused={isPaused} />
-            <button
-              onClick={() => setShowPasswordPrompt(true)}
-              className="text-xs text-[var(--text-muted)] hover:text-[var(--text-secondary)] px-2 py-1 cursor-pointer"
-              title="Reset timer (debug)"
-            >
-              Reset
-            </button>
-          </div>
-          
-          {/* Logout icon on the right */}
-          <div className="flex-1 flex justify-end">
-            <button
-              onClick={logout}
-              className="cursor-pointer hover:text-[var(--primary)] transition-colors text-[var(--text-secondary)]" 
-              aria-label="Logout"
-              title="Logout"
-            >
-              <LogoutIcon size={20} />
-            </button>
-          </div>
-        </div>
-      </header>
+      <Header 
+        currentPage="dashboard" 
+        timerExtra={
+          <button
+            onClick={() => setShowPasswordPrompt(true)}
+            className="text-xs text-[var(--text-muted)] hover:text-[var(--text-secondary)] px-2 py-1 cursor-pointer"
+            title="Reset timer (debug)"
+          >
+            Reset
+          </button>
+        }
+      />
       
       {/* Main Content */}
       <main className="container py-12">

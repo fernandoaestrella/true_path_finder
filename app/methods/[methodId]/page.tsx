@@ -1,9 +1,8 @@
 'use client';
 
-import React, { useState, useEffect, use } from 'react';
+import React, { useState, useEffect, use, Suspense } from 'react';
 import { useSearchParams } from 'next/navigation';
-import { Button, Textarea, Card, CardHeader, CardTitle, CardContent, TimerBar, LogoutIcon } from '@/components';
-import { useSessionTimer } from '@/lib/hooks/useSessionTimer';
+import { Button, Textarea, Card, CardHeader, CardTitle, CardContent, Header } from '@/components';
 import { useAuth } from '@/lib/contexts/AuthContext';
 import { Method, Review, TPFEvent } from '@/types';
 import { collection, getDocs, addDoc, doc, getDoc, serverTimestamp, updateDoc, query, where, orderBy } from 'firebase/firestore';
@@ -12,11 +11,10 @@ import { EventCard } from '@/components';
 
 type PageParams = Promise<{ methodId: string }>;
 
-export default function MethodDetailPage({ params }: { params: PageParams }) {
+function MethodDetailContent({ params }: { params: PageParams }) {
   const { methodId } = use(params);
   const searchParams = useSearchParams();
-  const { user, isLoading: authLoading, logout } = useAuth();
-  const { minutes, seconds, isPaused } = useSessionTimer();
+  const { user, isLoading: authLoading } = useAuth();
   
   const [method, setMethod] = useState<Method | null>(null);
   const [reviews, setReviews] = useState<Review[]>([]);
@@ -203,34 +201,7 @@ export default function MethodDetailPage({ params }: { params: PageParams }) {
   
   return (
     <div className="min-h-screen bg-[var(--background)]">
-      {/* Header */}
-      <header className="sticky top-0 z-30 pt-8 pb-6 bg-[var(--background)]">
-        <div className="container flex items-center justify-between">
-          {/* Back link */}
-          <div className="flex-1">
-            <a href="/dashboard" className="text-[var(--text-secondary)] hover:text-[var(--text-primary)] cursor-pointer">
-              ← Dashboard
-            </a>
-          </div>
-          
-          {/* Timer centered */}
-          <div className="flex items-center gap-2">
-            <TimerBar minutes={minutes} seconds={seconds} isPaused={isPaused} />
-          </div>
-          
-          {/* Logout icon on the right */}
-          <div className="flex-1 flex justify-end">
-            <button
-              onClick={logout}
-              className="cursor-pointer hover:text-[var(--primary)] transition-colors text-[var(--text-secondary)]" 
-              aria-label="Logout"
-              title="Logout"
-            >
-              <LogoutIcon size={20} />
-            </button>
-          </div>
-        </div>
-      </header>
+      <Header />
       
       {/* Content */}
       <main className="container py-8">
@@ -453,5 +424,13 @@ export default function MethodDetailPage({ params }: { params: PageParams }) {
         )}
       </main>
     </div>
+  );
+}
+
+export default function MethodDetailPage({ params }: { params: PageParams }) {
+  return (
+    <Suspense fallback={<div className="min-h-screen bg-[var(--background)] flex items-center justify-center"><div className="text-[var(--text-muted)]">Loading...</div></div>}>
+      <MethodDetailContent params={params} />
+    </Suspense>
   );
 }

@@ -1,15 +1,11 @@
 'use client';
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, Suspense } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { collection, addDoc, serverTimestamp } from 'firebase/firestore';
 import { db } from '@/src/lib/firebase/config';
 import { useAuth } from '@/lib/contexts/AuthContext';
-import { Button } from '@/components/ui/Button';
-import { Input } from '@/components/ui/Input';
-import { Card } from '@/components/ui/Card';
-import { TimerBar, LogoutIcon } from '@/components';
-import { useSessionTimer } from '@/lib/hooks/useSessionTimer';
+import { Button, Input, Card, Header } from '@/components';
 
 interface PhaseConfig {
   hours: number;
@@ -109,11 +105,10 @@ const PhaseInput = ({
   );
 };
 
-export default function CreateEventPage() {
+function CreateEventContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
-  const { user, logout } = useAuth();
-  const { minutes, seconds, isPaused } = useSessionTimer();
+  const { user } = useAuth();
   const [isSubmitting, setIsSubmitting] = useState(false);
   
   // Get methodId from URL
@@ -203,34 +198,7 @@ export default function CreateEventPage() {
 
   return (
     <div className="min-h-screen bg-[var(--background)]">
-      {/* Header */}
-      <header className="sticky top-0 z-30 pt-8 pb-6 bg-[var(--background)]">
-        <div className="container flex items-center justify-between">
-          {/* Back link */}
-          <div className="flex-1">
-            <a href="/dashboard" className="text-[var(--text-secondary)] hover:text-[var(--text-primary)] cursor-pointer">
-              ← Dashboard
-            </a>
-          </div>
-          
-          {/* Timer centered */}
-          <div className="flex items-center gap-2">
-            <TimerBar minutes={minutes} seconds={seconds} isPaused={isPaused} />
-          </div>
-          
-          {/* Logout icon on the right */}
-          <div className="flex-1 flex justify-end">
-            <button
-              onClick={logout}
-              className="cursor-pointer hover:text-[var(--primary)] transition-colors text-[var(--text-secondary)]" 
-              aria-label="Logout"
-              title="Logout"
-            >
-              <LogoutIcon size={20} />
-            </button>
-          </div>
-        </div>
-      </header>
+      <Header />
 
       <div className="container py-8">
         <h1 className="text-3xl font-bold text-[var(--text-primary)] mb-2">Create Event</h1>
@@ -377,5 +345,13 @@ export default function CreateEventPage() {
         </form>
       </div>
     </div>
+  );
+}
+
+export default function CreateEventPage() {
+  return (
+    <Suspense fallback={<div className="min-h-screen bg-[var(--background)] flex items-center justify-center"><p>Loading...</p></div>}>
+      <CreateEventContent />
+    </Suspense>
   );
 }
