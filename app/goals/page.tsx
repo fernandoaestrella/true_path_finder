@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useState, useEffect } from 'react';
-import { Button, Input, Textarea, Card, CardHeader, CardTitle, CardContent, TimerBar } from '@/components';
+import { Button, Input, Textarea, Card, CardHeader, CardTitle, CardContent, TimerBar, LogoutIcon } from '@/components';
 import { useSessionTimer } from '@/lib/hooks/useSessionTimer';
 import { useAuth } from '@/lib/contexts/AuthContext';
 import { Goal } from '@/types';
@@ -141,10 +141,10 @@ export default function GoalsPage() {
   return (
     <div className="min-h-screen bg-[var(--background)]">
       {/* Header */}
-      <header className="border-b border-[var(--border)] bg-[var(--surface)] sticky top-0 z-30">
-        <div className="container py-4 flex items-center justify-between">
+      <header className="sticky top-0 z-30 pt-8 pb-6 bg-[var(--background)]">
+        <div className="container flex items-center justify-between">
           <div className="flex items-center gap-4">
-            <a href="/dashboard" className="text-[var(--text-muted)] hover:text-[var(--text-primary)]">
+            <a href="/dashboard" className="text-[var(--text-secondary)] hover:text-[var(--text-primary)] cursor-pointer">
               ← Dashboard
             </a>
             <h1 className="text-xl font-bold text-[var(--text-primary)]">
@@ -154,8 +154,13 @@ export default function GoalsPage() {
           
           <div className="flex items-center gap-4">
             <TimerBar minutes={minutes} seconds={seconds} isPaused={isPaused} />
-            <button onClick={logout} className="btn btn-ghost text-sm">
-              Logout
+            <button
+              onClick={logout}
+              className="cursor-pointer hover:text-[var(--primary)] transition-colors text-[var(--text-secondary)]" 
+              aria-label="Logout"
+              title="Logout"
+            >
+              <LogoutIcon size={20} />
             </button>
           </div>
         </div>
@@ -209,7 +214,7 @@ export default function GoalsPage() {
         
         {/* Chosen Goals Summary */}
         {chosenGoalIds.size > 0 && (
-          <div className="mb-6 p-4 bg-[rgba(107,155,209,0.1)] rounded-lg border border-[var(--primary)]">
+          <div className="mb-6 p-4 bg-[rgba(107,155,209,0.1)] rounded-lg">
             <p className="text-sm text-[var(--primary)]">
               <strong>{chosenGoalIds.size}</strong> goal{chosenGoalIds.size !== 1 ? 's' : ''} chosen
             </p>
@@ -219,7 +224,6 @@ export default function GoalsPage() {
         {/* Goals Grid */}
         {filteredGoals.length === 0 ? (
           <div className="text-center py-12">
-            <div className="text-6xl mb-4">🎯</div>
             <h3 className="text-lg font-medium text-[var(--text-primary)] mb-2">
               {searchQuery ? 'No goals match your search' : 'No goals yet'}
             </h3>

@@ -18,7 +18,10 @@ interface MethodCardProps {
 
 function MethodCard({ method, onWriteReview, onViewResources }: MethodCardProps) {
   return (
-    <Card className="h-full">
+    <Card 
+      className="h-full card-clickable" 
+      onClick={() => onViewResources(method.id)}
+    >
       <CardHeader>
         <CardTitle as="h4" className="text-base">
           {method.title}
@@ -31,27 +34,25 @@ function MethodCard({ method, onWriteReview, onViewResources }: MethodCardProps)
         
         <div className="flex items-center gap-4 text-sm text-[var(--text-muted)] mb-4">
           <div className="flex items-center gap-1">
-            <span>⭐</span>
             <span>{method.stats.avgRating.toFixed(1)}</span>
           </div>
           <div className="flex items-center gap-1">
-            <span>👥</span>
             <span>{method.stats.activeUsers} trying</span>
           </div>
         </div>
         
-        <div className="flex gap-2">
+        <div className="flex gap-2"  onClick={(e) => e.stopPropagation()}>
           <button
             onClick={() => onViewResources(method.id)}
-            className="flex-1 py-2 px-3 text-sm rounded-md bg-[var(--background)] hover:bg-[var(--border)] transition-colors"
+            className="flex-1 py-2 px-3 text-sm rounded-md bg-[var(--surface-subtle)] hover:bg-[var(--border)] transition-colors cursor-pointer"
           >
-            📚 Resources
+            Resources
           </button>
           <button
             onClick={() => onWriteReview(method.id)}
-            className="flex-1 py-2 px-3 text-sm rounded-md bg-[var(--primary)] text-white hover:bg-[var(--primary-dark)] transition-colors"
+            className="flex-1 py-2 px-3 text-sm rounded-md bg-[var(--primary)] hover:bg-[var(--primary-dark)] transition-colors cursor-pointer"
           >
-            ✍️ Review
+            Review
           </button>
         </div>
       </CardContent>
@@ -69,7 +70,6 @@ export function MethodsGrid({ methodsByGoal, onWriteReview, onViewResources }: M
   if (methodsByGoal.length === 0) {
     return (
       <div className="text-center py-12">
-        <div className="text-6xl mb-4">🎯</div>
         <h3 className="text-lg font-medium text-[var(--text-primary)] mb-2">
           No methods yet
         </h3>
@@ -78,9 +78,9 @@ export function MethodsGrid({ methodsByGoal, onWriteReview, onViewResources }: M
         </p>
         <a
           href="/goals"
-          className="btn btn-primary"
+          className="btn btn-primary cursor-pointer"
         >
-          Choose a Goal
+          Choose Goals
         </a>
       </div>
     );
@@ -96,8 +96,7 @@ export function MethodsGrid({ methodsByGoal, onWriteReview, onViewResources }: M
     <div className="space-y-8">
       {methodsByGoal.map(({ goal, methods }) => (
         <div key={goal.id}>
-          <h3 className="text-lg font-semibold text-[var(--text-primary)] mb-4 flex items-center gap-2">
-            <span className="text-[var(--secondary)]">→</span>
+          <h3 className="text-lg font-semibold text-[var(--text-primary)] mb-4">
             {goal.title}
           </h3>
           <div className={`grid ${gridClass} gap-4`}>

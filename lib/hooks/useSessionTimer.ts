@@ -12,6 +12,7 @@ interface SessionTimerState {
   isPaused: boolean;
   isExpired: boolean;
   totalSecondsRemaining: number;
+  resetTimer: () => void;
 }
 
 /**
@@ -120,6 +121,14 @@ export function useSessionTimer(): SessionTimerState {
     return () => clearInterval(resetInterval);
   }, []);
   
+  
+  // Debug reset function
+  const resetTimer = useCallback(() => {
+    setTotalSeconds(DAILY_LIMIT_MINUTES * 60);
+    const sessionKey = getSessionKey();
+    localStorage.setItem(sessionKey, (DAILY_LIMIT_MINUTES * 60).toString());
+  }, [getSessionKey]);
+  
   const minutes = Math.floor(totalSeconds / 60);
   const seconds = totalSeconds % 60;
   
@@ -129,5 +138,6 @@ export function useSessionTimer(): SessionTimerState {
     isPaused,
     isExpired: totalSeconds <= 0,
     totalSecondsRemaining: totalSeconds,
+    resetTimer,
   };
 }

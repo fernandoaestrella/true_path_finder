@@ -13,7 +13,7 @@ const onboardingSteps: OnboardingStep[] = [
   {
     title: "We're all seeking happiness",
     content: (
-      <div className="space-y-4 text-[var(--text-secondary)]">
+      <div className="space-y-6 text-[var(--text-secondary)]">
         <p>
           Every piece of content ever created—every book, video, course, practice—is 
           ultimately an answer to one question:
@@ -26,110 +26,92 @@ const onboardingSteps: OnboardingStep[] = [
           why nothing changes.
         </p>
         <p className="text-[var(--primary)] font-medium">
-          What if you put your goal first, and derived everything from there?
+          What if you put your goal first?
         </p>
       </div>
-    ),
-    illustration: (
-      <div className="text-8xl text-center mb-8">🌅</div>
     ),
   },
   {
     title: "Goals → Methods → Reviews",
     content: (
-      <div className="space-y-4 text-[var(--text-secondary)]">
-        <p>True Path Finder is simple:</p>
-        <ul className="space-y-3">
+      <div className="space-y-6 text-[var(--text-secondary)]">
+        <ul className="space-y-4">
           <li className="flex items-start gap-3">
-            <span className="flex-shrink-0 w-8 h-8 rounded-full bg-[var(--primary)] text-white flex items-center justify-center font-bold">1</span>
+            <span className="flex-shrink-0 w-8 h-8 rounded-full bg-[var(--primary)] text-white flex items-center justify-center font-bold text-sm">1</span>
             <div>
               <span className="font-medium text-[var(--text-primary)]">Choose a Goal</span>
               <span className="text-sm block mt-0.5">What do you genuinely want to achieve?</span>
             </div>
           </li>
           <li className="flex items-start gap-3">
-            <span className="flex-shrink-0 w-8 h-8 rounded-full bg-[var(--secondary)] text-white flex items-center justify-center font-bold">2</span>
+            <span className="flex-shrink-0 w-8 h-8 rounded-full bg-[var(--primary)] text-white flex items-center justify-center font-bold text-sm">2</span>
             <div>
               <span className="font-medium text-[var(--text-primary)]">Try Methods</span>
               <span className="text-sm block mt-0.5">Discover approaches others have tested</span>
             </div>
           </li>
           <li className="flex items-start gap-3">
-            <span className="flex-shrink-0 w-8 h-8 rounded-full bg-[var(--accent)] text-white flex items-center justify-center font-bold">3</span>
+            <span className="flex-shrink-0 w-8 h-8 rounded-full bg-[var(--primary)] text-white flex items-center justify-center font-bold text-sm">3</span>
             <div>
-              <span className="font-medium text-[var(--text-primary)]">Share Honest Reviews</span>
+              <span className="font-medium text-[var(--text-primary)]">Share Reviews</span>
               <span className="text-sm block mt-0.5">Help others by sharing what actually worked</span>
             </div>
           </li>
         </ul>
-        <p className="mt-4">
-          No debates, no endless discussions—just trying, learning, and sharing results.
-        </p>
       </div>
-    ),
-    illustration: (
-      <div className="text-8xl text-center mb-8">🧭</div>
     ),
   },
   {
     title: "21 minutes keeps you focused",
     content: (
-      <div className="space-y-4 text-[var(--text-secondary)]">
+      <div className="space-y-6 text-[var(--text-secondary)]">
         <p>
-          You have <span className="font-bold text-[var(--primary)]">21 minutes per day</span> to 
+          You have <span className="font-semibold text-[var(--text-primary)]">21 minutes per day</span> to 
           use this app.
         </p>
         <p>
           This isn't a limitation—it's liberation. The goal is to{' '}
           <span className="font-medium text-[var(--text-primary)]">do the work</span>, not to 
-          browse and research endlessly.
+          browse endlessly.
         </p>
-        <div className="bg-[var(--timer-bg)] rounded-lg p-4 space-y-2">
-          <div className="flex items-center gap-2">
-            <span className="text-[var(--primary)]">⏸</span>
-            <span>Timer pauses when you switch to other apps</span>
+        <div className="bg-[var(--surface-subtle)] rounded-lg p-4 space-y-3 border border-[var(--border)]">
+          <div className="flex items-start gap-3">
+            <span className="text-[var(--primary)]">•</span>
+            <span>Timer pauses when you switch apps</span>
           </div>
-          <div className="flex items-center gap-2">
-            <span className="text-[var(--primary)]">🌙</span>
-            <span>Resets at 3:20 AM your local time</span>
+          <div className="flex items-start gap-3">
+            <span className="text-[var(--primary)]">•</span>
+            <span>Resets at 3:20 AM local time</span>
           </div>
-          <div className="flex items-center gap-2">
-            <span className="text-[var(--primary)]">🎯</span>
-            <span>Events don&apos;t count against your limit</span>
+          <div className="flex items-start gap-3">
+            <span className="text-[var(--primary)]">•</span>
+            <span>Events don't count against your limit</span>
           </div>
         </div>
       </div>
-    ),
-    illustration: (
-      <div className="text-8xl text-center mb-8">⏱️</div>
     ),
   },
   {
     title: "Events bring us together",
     content: (
-      <div className="space-y-4 text-[var(--text-secondary)]">
+      <div className="space-y-6 text-[var(--text-secondary)]">
         <p>
-          Community happens through <span className="font-medium text-[var(--text-primary)]">structured events</span>—not 
-          endless chat threads.
+          Community happens through <span className="font-medium text-[var(--text-primary)]">structured events</span>.
         </p>
-        <p>Every event has three phases:</p>
-        <div className="space-y-2">
-          <div className="flex items-center gap-3 p-3 bg-[var(--surface)] rounded-lg border border-[var(--border)]">
-            <span className="text-2xl">👋</span>
+        <div className="space-y-3">
+          <div className="flex items-center gap-3 p-3 bg-[var(--surface-subtle)] rounded-lg">
             <div>
               <span className="font-medium text-[var(--text-primary)]">Arrival</span>
               <span className="text-sm block">Introductions, chat open</span>
             </div>
           </div>
-          <div className="flex items-center gap-3 p-3 bg-[var(--surface)] rounded-lg border border-[var(--border)]">
-            <span className="text-2xl">🧘</span>
+          <div className="flex items-center gap-3 p-3 bg-[var(--surface-subtle)] rounded-lg">
             <div>
               <span className="font-medium text-[var(--text-primary)]">Practice</span>
               <span className="text-sm block">Focused work, chat closed</span>
             </div>
           </div>
-          <div className="flex items-center gap-3 p-3 bg-[var(--surface)] rounded-lg border border-[var(--border)]">
-            <span className="text-2xl">🤝</span>
+          <div className="flex items-center gap-3 p-3 bg-[var(--surface-subtle)] rounded-lg">
             <div>
               <span className="font-medium text-[var(--text-primary)]">Reflection</span>
               <span className="text-sm block">Sharing insights, chat open</span>
@@ -137,9 +119,6 @@ const onboardingSteps: OnboardingStep[] = [
           </div>
         </div>
       </div>
-    ),
-    illustration: (
-      <div className="text-8xl text-center mb-8">🤝</div>
     ),
   },
 ];
@@ -190,7 +169,7 @@ export default function OnboardingPage() {
       </main>
       
       {/* Navigation */}
-      <footer className="p-6 border-t border-[var(--border)] bg-[var(--surface)]">
+      <footer className="p-6">
         <div className="max-w-lg mx-auto flex items-center justify-between gap-4">
           <Button
             variant="ghost"

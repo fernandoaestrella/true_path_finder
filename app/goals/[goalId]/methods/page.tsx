@@ -220,10 +220,10 @@ export default function MethodsPage({ params }: { params: PageParams }) {
   return (
     <div className="min-h-screen bg-[var(--background)]">
       {/* Header */}
-      <header className="border-b border-[var(--border)] bg-[var(--surface)] sticky top-0 z-30">
-        <div className="container py-4 flex items-center justify-between">
+      <header className="sticky top-0 z-30 pt-8 pb-6 bg-[var(--background)]">
+        <div className="container flex items-center justify-between">
           <div className="flex items-center gap-4">
-            <a href="/goals" className="text-[var(--text-muted)] hover:text-[var(--text-primary)]">
+            <a href="/goals" className="text-[var(--text-secondary)] hover:text-[var(--text-primary)] cursor-pointer">
               ← Goals
             </a>
             <h1 className="text-xl font-bold text-[var(--text-primary)]">
@@ -233,7 +233,7 @@ export default function MethodsPage({ params }: { params: PageParams }) {
           
           <div className="flex items-center gap-4">
             <TimerBar minutes={minutes} seconds={seconds} isPaused={isPaused} />
-            <button onClick={logout} className="btn btn-ghost text-sm">
+            <button onClick={logout} className="btn btn-ghost text-sm cursor-pointer">
               Logout
             </button>
           </div>
@@ -244,7 +244,7 @@ export default function MethodsPage({ params }: { params: PageParams }) {
       <main className="container py-8">
         {/* Goal Description */}
         {goal?.description && (
-          <div className="mb-6 p-4 bg-[var(--surface)] rounded-lg border border-[var(--border)]">
+          <div className="mb-6 p-4 bg-[var(--surface-subtle)] rounded-lg">
             <p className="text-[var(--text-secondary)]">{goal.description}</p>
           </div>
         )}
@@ -281,7 +281,7 @@ export default function MethodsPage({ params }: { params: PageParams }) {
               <form onSubmit={handleCreateMethod} className="space-y-4">
                 <Input
                   label="Method Title"
-                  placeholder="e.g., Morning meditation practice"
+                  placeholder="e.g., Daily practice routine"
                   value={newMethod.title}
                   onChange={(e) => setNewMethod(prev => ({ ...prev, title: e.target.value }))}
                   required
@@ -376,7 +376,6 @@ export default function MethodsPage({ params }: { params: PageParams }) {
         {/* Methods List */}
         {sortedMethods.length === 0 ? (
           <div className="text-center py-12">
-            <div className="text-6xl mb-4">🔬</div>
             <h3 className="text-lg font-medium text-[var(--text-primary)] mb-2">
               No methods yet
             </h3>
@@ -417,16 +416,13 @@ export default function MethodsPage({ params }: { params: PageParams }) {
                     
                     <div className="flex items-center gap-4 text-sm text-[var(--text-muted)]">
                       <div className="flex items-center gap-1">
-                        <span>⭐</span>
                         <span>{method.stats.avgRating > 0 ? method.stats.avgRating.toFixed(1) : '–'}</span>
                         <span className="text-xs">({method.stats.reviewCount})</span>
                       </div>
                       <div className="flex items-center gap-1">
-                        <span>👥</span>
                         <span>{method.stats.activeUsers} trying</span>
                       </div>
                       <div className="flex items-center gap-1 text-xs">
-                        <span>⏱️</span>
                         <span>{method.suggestedMinimum.value} {method.suggestedMinimum.type}</span>
                       </div>
                     </div>
@@ -440,11 +436,11 @@ export default function MethodsPage({ params }: { params: PageParams }) {
                         View Details
                       </a>
                       <button
-                        className="px-3 py-2 text-[var(--text-muted)] hover:text-[var(--text-secondary)] transition-colors"
+                        className="px-3 py-2 text-[var(--text-muted)] hover:text-[var(--text-secondary)] transition-colors cursor-pointer"
                         title="Flag method (coming soon)"
                         disabled
                       >
-                        🚩
+                        Flag
                       </button>
                     </div>
                   </CardFooter>

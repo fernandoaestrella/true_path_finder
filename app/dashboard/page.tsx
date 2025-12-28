@@ -1,8 +1,7 @@
 'use client';
 
 import React, { useState, useEffect } from 'react';
-import { TimerBar } from '@/components';
-import { DailyIntentionModal } from '@/components/features/DailyIntentionModal';
+import { TimerBar, LogoutIcon } from '@/components';
 import { MethodsGrid } from '@/components/features/MethodsGrid';
 import { useSessionTimer } from '@/lib/hooks/useSessionTimer';
 import { useAuth } from '@/lib/contexts/AuthContext';
@@ -17,12 +16,22 @@ interface MethodsByGoal {
 
 export default function DashboardPage() {
   const { user, userData, isLoading: authLoading, logout } = useAuth();
-  const { minutes, seconds, isPaused, isExpired } = useSessionTimer();
+  const { minutes, seconds, isPaused, isExpired, resetTimer } = useSessionTimer();
   
-  const [showIntention, setShowIntention] = useState(true);
+  const [showPasswordPrompt, setShowPasswordPrompt] = useState(false);
+  const [password, setPassword] = useState('');
   const [chosenGoals, setChosenGoals] = useState<Goal[]>([]);
   const [methodsByGoal, setMethodsByGoal] = useState<MethodsByGoal[]>([]);
   const [isLoading, setIsLoading] = useState(true);
+  
+  // Check for daily intention completion
+  useEffect(() => {
+    const today = new Date().toDateString();
+    const completed = localStorage.getItem('dailyIntentionCompleted');
+    if (completed !== today && !authLoading && user) {
+      window.location.href = '/intention';
+    }
+  }, [authLoading, user]);
   
   // Redirect if not authenticated
   useEffect(() => {
@@ -102,7 +111,7 @@ export default function DashboardPage() {
   }, [user]);
   
   const handleWriteReview = (methodId: string) => {
-    window.location.href = `/methods/${methodId}/review`;
+    window.location.href = `/methods/${methodId}?tab=reviews`;
   };
   
   const handleViewResources = (methodId: string) => {
@@ -119,69 +128,97 @@ export default function DashboardPage() {
   
   return (
     <div className="min-h-screen bg-[var(--background)]">
-      {/* Daily Intention Modal */}
-      {showIntention && (
-        <DailyIntentionModal
-          goals={chosenGoals}
-          onConfirm={() => setShowIntention(false)}
-        />
-      )}
-      
-      {/* Time Expired Overlay */}
-      {isExpired && (
-        <div className="fixed inset-0 bg-black/70 flex items-center justify-center p-6 z-40">
-          <div className="bg-[var(--surface)] rounded-xl shadow-lg max-w-md w-full p-8 text-center animate-fade-in">
-            <div className="text-6xl mb-4">⏰</div>
-            <h2 className="text-xl font-bold text-[var(--text-primary)] mb-2">
-              Time&apos;s Up!
-            </h2>
-            <p className="text-[var(--text-secondary)] mb-4">
-              You&apos;ve used your 21 minutes for today. Go try your methods!
-            </p>
-            <p className="text-sm text-[var(--text-muted)]">
-              Timer resets at 3:20 AM
-            </p>
+      {/* Password prompt for timer reset */}
+      {showPasswordPrompt && (
+        <div className="fixed inset-0 bg-black/70 flex items-center justify-center p-6 z-50">
+          <div className="bg-[var(--surface)] rounded-lg shadow-lg max-w-sm w-full p-6">
+            <h3 className="text-lg font-semibold text-[var(--text-primary)] mb-4">
+              Reset Timer
+            </h3>
+            <input
+              type="password"
+              value={password}
+              onChange={(e) => setPassword(e.target.value)}
+              placeholder="Enter password"
+              className="input w-full mb-4"
+              onKeyDown={(e) => {
+                if (e.key === 'Enter') {
+                  if (password === 'reset123') {
+                    if (typeof resetTimer === 'function') resetTimer();
+                    setShowPasswordPrompt(false);
+                    setPassword('');
+                  } else {
+                    alert('Incorrect password');
+                  }
+                }
+              }}
+            />
+            <div className="flex gap-2">
+              <button
+                onClick={() => {
+                  setShowPasswordPrompt(false);
+                  setPassword('');
+                }}
+                className="btn btn-secondary flex-1"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={() => {
+                  if (password === 'reset123') {
+                    if (typeof resetTimer === 'function') resetTimer();
+                    setShowPasswordPrompt(false);
+                    setPassword('');
+                  } else {
+                    alert('Incorrect password');
+                  }
+                }}
+                className="btn btn-primary flex-1"
+              >
+                Reset
+              </button>
+            </div>
           </div>
         </div>
       )}
       
       {/* Header */}
-      <header className="border-b border-[var(--border)] bg-[var(--surface)] sticky top-0 z-30">
-        <div className="container py-4 flex items-center justify-between">
-          <h1 className="text-xl font-bold text-[var(--text-primary)]">
-            🧭 True Path Finder
-          </h1>
+      <header className="sticky top-0 z-30 pt-8 pb-6 bg-[var(--background)]">
+        <div className="container flex items-center justify-between">
+          {/* Timer centered */}
+          <div className="flex-1"></div>
           
-          <div className="flex items-center gap-4">
+          <div className="flex items-center gap-2">
             <TimerBar minutes={minutes} seconds={seconds} isPaused={isPaused} />
-            
-            <nav className="flex items-center gap-2">
-              <a
-                href="/goals"
-                className="btn btn-ghost text-sm"
-              >
-                Goals
-              </a>
-              <button
-                onClick={logout}
-                className="btn btn-ghost text-sm"
-              >
-                Logout
-              </button>
-            </nav>
+            <button
+              onClick={() => setShowPasswordPrompt(true)}
+              className="text-xs text-[var(--text-muted)] hover:text-[var(--text-secondary)] px-2 py-1 cursor-pointer"
+              title="Reset timer (debug)"
+            >
+              Reset
+            </button>
+          </div>
+          
+          {/* Logout icon on the right */}
+          <div className="flex-1 flex justify-end">
+            <button
+              onClick={logout}
+              className="cursor-pointer hover:text-[var(--primary)] transition-colors text-[var(--text-secondary)]" 
+              aria-label="Logout"
+              title="Logout"
+            >
+              <LogoutIcon size={20} />
+            </button>
           </div>
         </div>
       </header>
       
       {/* Main Content */}
-      <main className="container py-8">
-        <div className="mb-8">
-          <h2 className="text-2xl font-bold text-[var(--text-primary)] mb-2">
-            Welcome back{userData?.email ? `, ${userData.email.split('@')[0]}` : ''}
+      <main className="container py-12">
+        <div className="mb-12 text-center">
+          <h2 className="text-2xl font-semibold text-[var(--text-primary)]">
+            Methods you're trying
           </h2>
-          <p className="text-[var(--text-secondary)]">
-            Here are the methods you&apos;re currently trying
-          </p>
         </div>
         
         <MethodsGrid

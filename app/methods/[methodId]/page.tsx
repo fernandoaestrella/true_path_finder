@@ -1,23 +1,31 @@
 'use client';
 
 import React, { useState, useEffect, use } from 'react';
-import { Button, Textarea, Card, CardHeader, CardTitle, CardContent, TimerBar } from '@/components';
+import { useSearchParams } from 'next/navigation';
+import { Button, Textarea, Card, CardHeader, CardTitle, CardContent, TimerBar, LogoutIcon } from '@/components';
 import { useSessionTimer } from '@/lib/hooks/useSessionTimer';
 import { useAuth } from '@/lib/contexts/AuthContext';
-import { Method, Review } from '@/types';
+import { Method, Review, TPFEvent } from '@/types';
 import { collection, getDocs, addDoc, doc, getDoc, serverTimestamp, updateDoc, query, where, orderBy } from 'firebase/firestore';
 import { db } from '@/src/lib/firebase/config';
+import { EventCard } from '@/components';
 
 type PageParams = Promise<{ methodId: string }>;
 
 export default function MethodDetailPage({ params }: { params: PageParams }) {
   const { methodId } = use(params);
+  const searchParams = useSearchParams();
   const { user, isLoading: authLoading, logout } = useAuth();
   const { minutes, seconds, isPaused } = useSessionTimer();
   
   const [method, setMethod] = useState<Method | null>(null);
   const [reviews, setReviews] = useState<Review[]>([]);
-  const [activeTab, setActiveTab] = useState<'resources' | 'reviews'>('resources');
+  const [events, setEvents] = useState<TPFEvent[]>([]);
+  
+  // Initialize active tab from URL param
+  const tabParam = searchParams.get('tab');
+  const initialTab = tabParam === 'reviews' ? 'reviews' : tabParam === 'events' ? 'events' : 'resources';
+  const [activeTab, setActiveTab] = useState<'resources' | 'reviews' | 'events'>(initialTab);
   const [isLoading, setIsLoading] = useState(true);
   
   // Review form
@@ -66,6 +74,43 @@ export default function MethodDetailPage({ params }: { params: PageParams }) {
         })) as Review[];
         
         setReviews(methodReviews);
+        
+        // Fetch events
+        const eventsRef = collection(db, 'events');
+        const eventsQuery = query(
+          eventsRef,
+          where('methodId', '==', methodId),
+          orderBy('startTime', 'asc')
+        );
+        const eventsSnap = await getDocs(eventsQuery);
+        const methodEvents = eventsSnap.docs
+          .map(doc => {
+            const data = doc.data();
+            return {
+              id: doc.id,
+              methodId: data.methodId,
+              title: data.title,
+              description: data.description,
+              links: data.links || [],
+              phases: data.phases,
+              startTime: data.startTime?.toDate() || new Date(),
+              maxPerBatch: data.maxPerBatch || 21,
+              createdBy: data.createdBy,
+            } as TPFEvent;
+          })
+          .filter(event => {
+            // Only show upcoming events or events happening now
+            const now = new Date();
+            const start = new Date(event.startTime);
+            const totalDuration = 
+              (event.phases?.arrival?.durationSeconds || 0) +
+              (event.phases?.practice?.durationSeconds || 0) +
+              (event.phases?.close?.durationSeconds || 0);
+            const end = new Date(start.getTime() + totalDuration * 1000);
+            return end >= now;
+          });
+        
+        setEvents(methodEvents);
       } catch (error) {
         console.error('Error fetching data:', error);
       } finally {
@@ -159,18 +204,29 @@ export default function MethodDetailPage({ params }: { params: PageParams }) {
   return (
     <div className="min-h-screen bg-[var(--background)]">
       {/* Header */}
-      <header className="border-b border-[var(--border)] bg-[var(--surface)] sticky top-0 z-30">
-        <div className="container py-4 flex items-center justify-between">
-          <div className="flex items-center gap-4">
-            <a href="/dashboard" className="text-[var(--text-muted)] hover:text-[var(--text-primary)]">
+      <header className="sticky top-0 z-30 pt-8 pb-6 bg-[var(--background)]">
+        <div className="container flex items-center justify-between">
+          {/* Back link */}
+          <div className="flex-1">
+            <a href="/dashboard" className="text-[var(--text-secondary)] hover:text-[var(--text-primary)] cursor-pointer">
               ← Dashboard
             </a>
           </div>
           
-          <div className="flex items-center gap-4">
+          {/* Timer centered */}
+          <div className="flex items-center gap-2">
             <TimerBar minutes={minutes} seconds={seconds} isPaused={isPaused} />
-            <button onClick={logout} className="btn btn-ghost text-sm">
-              Logout
+          </div>
+          
+          {/* Logout icon on the right */}
+          <div className="flex-1 flex justify-end">
+            <button
+              onClick={logout}
+              className="cursor-pointer hover:text-[var(--primary)] transition-colors text-[var(--text-secondary)]" 
+              aria-label="Logout"
+              title="Logout"
+            >
+              <LogoutIcon size={20} />
             </button>
           </div>
         </div>
@@ -189,48 +245,49 @@ export default function MethodDetailPage({ params }: { params: PageParams }) {
           
           <div className="flex items-center gap-6 text-sm">
             <div className="flex items-center gap-1">
-              <span className="text-lg">⭐</span>
               <span className="font-medium">{method.stats.avgRating > 0 ? method.stats.avgRating.toFixed(1) : '–'}</span>
               <span className="text-[var(--text-muted)]">({method.stats.reviewCount} reviews)</span>
             </div>
             <div className="flex items-center gap-1">
-              <span className="text-lg">👥</span>
-              <span>{method.stats.activeUsers} people trying</span>
+              <span>{method.stats.activeUsers} trying</span>
             </div>
             <div className="flex items-center gap-1 text-[var(--text-muted)]">
-              <span>⏱️</span>
-              <span>Suggested: try for {method.suggestedMinimum.value} {method.suggestedMinimum.type}</span>
+              <span>Try for {method.suggestedMinimum.value} {method.suggestedMinimum.type}</span>
             </div>
           </div>
         </div>
         
         {/* Tabs */}
-        <div className="flex gap-4 border-b border-[var(--border)] mb-6">
+        <div className="flex gap-2 mb-8">
           <button
             onClick={() => setActiveTab('resources')}
-            className={`pb-3 px-1 text-sm font-medium border-b-2 transition-colors ${
+            className={`flex-1 py-4 px-6 text-base font-medium rounded-lg transition-all cursor-pointer ${
               activeTab === 'resources'
-                ? 'border-[var(--primary)] text-[var(--primary)]'
-                : 'border-transparent text-[var(--text-muted)] hover:text-[var(--text-secondary)]'
+                ? 'bg-[var(--primary)] text-white'
+                : 'bg-[var(--surface-subtle)] text-[var(--text-secondary)] hover:bg-[var(--border)]'
             }`}
           >
-            📚 Resources
+            Resources
           </button>
           <button
             onClick={() => setActiveTab('reviews')}
-            className={`pb-3 px-1 text-sm font-medium border-b-2 transition-colors ${
+            className={`flex-1 py-4 px-6 text-base font-medium rounded-lg transition-all cursor-pointer ${
               activeTab === 'reviews'
-                ? 'border-[var(--primary)] text-[var(--primary)]'
-                : 'border-transparent text-[var(--text-muted)] hover:text-[var(--text-secondary)]'
+                ? 'bg-[var(--primary)] text-white'
+                : 'bg-[var(--surface-subtle)] text-[var(--text-secondary)] hover:bg-[var(--border)]'
             }`}
           >
-            💬 Reviews ({reviews.length})
+            Reviews ({reviews.length})
           </button>
           <button
-            disabled
-            className="pb-3 px-1 text-sm font-medium border-b-2 border-transparent text-[var(--text-muted)] opacity-50 cursor-not-allowed"
+            onClick={() => setActiveTab('events')}
+            className={`flex-1 py-4 px-6 text-base font-medium rounded-lg transition-all cursor-pointer ${
+              activeTab === 'events'
+                ? 'bg-[var(--primary)] text-white'
+                : 'bg-[var(--surface-subtle)] text-[var(--text-secondary)] hover:bg-[var(--border)]'
+            }`}
           >
-            📅 Events <span className="coming-soon ml-1">Soon</span>
+            Events ({events.length})
           </button>
         </div>
         
@@ -361,6 +418,34 @@ export default function MethodDetailPage({ params }: { params: PageParams }) {
                       </p>
                     </CardContent>
                   </Card>
+                ))}
+              </div>
+            )}
+          </div>
+        )}
+        
+        {activeTab === 'events' && (
+          <div className="animate-fade-in">
+            {/* Create Event Button */}
+            <div className="mb-6">
+              <Button onClick={() => window.location.href = `/events/create?methodId=${methodId}`}>
+                ➕ Create Event
+              </Button>
+            </div>
+            
+            {/* Events List */}
+            {events.length === 0 ? (
+              <div className="text-center py-12">
+                <div className="text-5xl mb-4">📅</div>
+                <p className="text-[var(--text-muted)] mb-4">No upcoming events</p>
+                <Button onClick={() => window.location.href = `/events/create?methodId=${methodId}`}>
+                  Create the First Event
+                </Button>
+              </div>
+            ) : (
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                {events.map((event) => (
+                  <EventCard key={event.id} event={event} />
                 ))}
               </div>
             )}

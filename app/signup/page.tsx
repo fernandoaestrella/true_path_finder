@@ -88,7 +88,6 @@ export default function SignupPage() {
     <div className="min-h-screen bg-[var(--background)] flex items-center justify-center p-6">
       <div className="w-full max-w-md">
         <div className="text-center mb-8">
-          <div className="text-5xl mb-4">🌟</div>
           <h1 className="text-2xl font-bold text-[var(--text-primary)]">
             Create Your Account
           </h1>
@@ -146,7 +145,7 @@ export default function SignupPage() {
           </div>
           
           {error && (
-            <div className="p-3 bg-[rgba(212,114,106,0.1)] border border-[var(--error)] rounded-lg text-[var(--error)] text-sm">
+            <div className="p-3 bg-[rgba(212,114,106,0.1)] rounded-lg text-[var(--text-primary)] text-sm">
               {error}
             </div>
           )}

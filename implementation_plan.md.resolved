@@ -1,0 +1,275 @@
+# True Path Finder - Implementation Plan
+
+A goal achievement app where users discover what works through trying methods, sharing honest reviews, and community events. Features a 21-minute daily usage limit to encourage *doing* over *browsing*.
+
+---
+
+## Decisions Made
+
+| Decision | Choice |
+|----------|--------|
+| Frontend | Next.js 14 (App Router) + TypeScript |
+| Backend | Firebase (Auth, Firestore, Realtime DB) |
+| Chat | Firebase Realtime Database |
+| Hosting | Firebase Hosting (free plan supports multiple sites) |
+| Scope | Phase 1 first (core loop), then expand |
+
+> [!NOTE]
+> **Avoiding Tangential Discussion**: Instead of a full Q&A section on methods, the design uses:
+> - **Events only** for real-time community chat (chat is disabled during Practice phase)
+> - **Reviews** as the main feedback mechanism (structured, not conversational)
+> - No open discussion threads on method pages
+>
+> This keeps users focused on *trying methods and sharing results* rather than debating.
+
+---
+
+## Proposed Changes
+
+### Project Structure
+
+```
+true_path_finder/
+├── src/
+│   ├── app/                    # Next.js App Router pages
+│   │   ├── (auth)/             # Auth group (onboarding, login)
+│   │   ├── (main)/             # Main app group (dashboard, goals, methods)
+│   │   ├── api/                # API routes
+│   │   └── layout.tsx
+│   ├── components/             # Reusable UI components
+│   │   ├── ui/                 # Base components (Button, Card, Modal)
+│   │   └── features/           # Feature-specific components
+│   ├── lib/                    # Utilities
+│   │   ├── firebase/           # Firebase config and helpers
+│   │   ├── hooks/              # Custom React hooks
+│   │   └── utils/              # General utilities
+│   ├── styles/                 # Global CSS and design tokens
+│   └── types/                  # TypeScript interfaces
+├── firebase/
+│   ├── firestore.rules
+│   └── functions/              # Cloud Functions
+└── public/                     # Static assets
+```
+
+---
+
+### Database Schema (Firestore)
+
+#### [NEW] [firestore.rules](file:///c:/Users/Admin/development/true_path_finder/firebase/firestore.rules)
+
+Security rules for all collections.
+
+#### Collections Structure
+
+```
+users/
+  {userId}/
+    - email: string
+    - timezone: string
+    - createdAt: timestamp
+    - onboardingComplete: boolean
+    - dailySession: { date, minutesUsed, lastActive }
+    
+    chosenGoals/ (subcollection)
+      {goalId}/ → { addedAt }
+    
+    chosenMethods/ (subcollection)
+      {methodId}/ → { addedAt, attempts[], status: 'active'|'tested' }
+
+goals/
+  {goalId}/
+    - title: string
+    - description: string
+    - createdBy: userId
+    - createdAt: timestamp
+    - groupId: string ('general' or private group ID)
+
+methods/
+  {methodId}/
+    - goalId: string
+    - title: string
+    - description: string
+    - resources: [{ title, url }]
+    - suggestedMinimum: { type: 'hours'|'days'|'attempts', value: number }
+    - createdBy: userId
+    - createdAt: timestamp
+    - stats: { activeUsers, avgRating, reviewCount }
+
+reviews/
+  {reviewId}/
+    - methodId: string
+    - userId: string
+    - score: number (1-5)
+    - content: string
+    - attemptsSummary: { count, totalDuration }
+    - metMinimum: boolean
+    - createdAt: timestamp
+    - updatedAt: timestamp
+
+events/
+  {eventId}/
+    - methodId: string
+    - title: string
+    - description: string
+    - links: [{ title, url }]
+    - phases: {
+        arrival: { durationSeconds },
+        practice: { durationSeconds },
+        close: { durationSeconds }
+      }
+    - startTime: timestamp
+    - maxPerBatch: 21
+    - createdBy: userId
+    
+    batches/ (subcollection)
+      {batchNumber}/ → { participants: userId[] }
+
+groups/
+  {groupId}/
+    - name: string
+    - isGeneral: boolean
+    - createdBy: userId
+    - members: userId[]
+```
+
+---
+
+### Phase 1: Foundation & Core Loop
+
+#### [NEW] [src/app/layout.tsx](file:///c:/Users/Admin/development/true_path_finder/src/app/layout.tsx)
+Root layout with providers (Auth, Timer, Theme).
+
+#### [NEW] [src/styles/globals.css](file:///c:/Users/Admin/development/true_path_finder/src/styles/globals.css)
+Design system with calm color palette:
+- Primary: Soft blue (#6B9BD1)
+- Secondary: Sage green (#8FBC8F)
+- Background: Warm gray (#F5F5F5)
+- Text: Charcoal (#2C3E50)
+
+#### [NEW] [src/lib/firebase/config.ts](file:///c:/Users/Admin/development/true_path_finder/src/lib/firebase/config.ts)
+Firebase initialization and exports.
+
+---
+
+#### Onboarding Flow
+
+##### [NEW] [src/app/(auth)/onboarding/page.tsx](file:///c:/Users/Admin/development/true_path_finder/src/app/(auth)/onboarding/page.tsx)
+4-5 screen philosophy experience:
+1. "We're all seeking happiness" - Introduction
+2. "Goals → Methods → Reviews" - How it works
+3. "21 minutes keeps you focused" - The limit
+4. "Events bring us together" - Community philosophy
+5. Email signup + timezone selection
+
+---
+
+#### Daily Intention & Home
+
+##### [NEW] [src/app/(main)/intention/page.tsx](file:///c:/Users/Admin/development/true_path_finder/src/app/(main)/intention/page.tsx)
+- Modal-style screen shown on each app open
+- Lists all chosen goals for acknowledgment
+- Cannot be skipped
+
+##### [NEW] [src/app/(main)/dashboard/page.tsx](file:///c:/Users/Admin/development/true_path_finder/src/app/(main)/dashboard/page.tsx)
+- Timer bar at top (21:00 countdown)
+- Methods grouped by goal (adaptive 5-row layout)
+- Method cards with: resources link, review button, event countdown
+- Empty state: "Choose a Goal" prompt
+
+##### [NEW] [src/lib/hooks/useSessionTimer.ts](file:///c:/Users/Admin/development/true_path_finder/src/lib/hooks/useSessionTimer.ts)
+- Tracks 21-minute usage
+- Pauses on window blur
+- Resets at 3:20 AM local time
+- Syncs with Firestore for persistence
+
+---
+
+#### Goals & Methods
+
+##### [NEW] [src/app/(main)/goals/page.tsx](file:///c:/Users/Admin/development/true_path_finder/src/app/(main)/goals/page.tsx)
+- Browse/search existing goals
+- Create new goal
+- Choose/unchoose goals
+- Placeholder: "Related Goals" section (coming soon)
+
+##### [NEW] [src/app/(main)/goals/[goalId]/methods/page.tsx](file:///c:/Users/Admin/development/true_path_finder/src/app/(main)/goals/[goalId]/methods/page.tsx)
+- Methods list with sorting (rating, active users, completions)
+- Method cards showing stats
+- Add new method form
+- Placeholder: Flag button (inactive)
+
+##### [NEW] [src/app/(main)/methods/[methodId]/page.tsx](file:///c:/Users/Admin/development/true_path_finder/src/app/(main)/methods/[methodId]/page.tsx)
+- Tabbed interface: Resources | Reviews | Events
+- Resources: Links with descriptions
+- Reviews: Sortable list, write review button
+- Events: Upcoming list, online counter, create event button
+
+---
+
+### Phase 2: Events System
+
+##### [NEW] [src/app/(main)/events/create/page.tsx](file:///c:/Users/Admin/development/true_path_finder/src/app/(main)/events/create/page.tsx)
+- Event creation form with 3-phase durations
+- Info tooltips for each phase
+- Max 21 participants setting
+
+##### [NEW] [src/app/(main)/events/[eventId]/page.tsx](file:///c:/Users/Admin/development/true_path_finder/src/app/(main)/events/[eventId]/page.tsx)
+- Live event view with phase indicator
+- Batch selection (users choose their batch)
+- Chat component (enabled during Arrival/Close phases only)
+- Timer exempt from 21-minute limit
+
+##### [NEW] [firebase/functions/src/events.ts](file:///c:/Users/Admin/development/true_path_finder/firebase/functions/src/events.ts)
+- Cloud Functions for batch management
+- Auto-reassign logic for ≤5 participant batches
+
+---
+
+### Phase 3: Groups & Polish
+
+##### [NEW] [src/app/(main)/groups/page.tsx](file:///c:/Users/Admin/development/true_path_finder/src/app/(main)/groups/page.tsx)
+- Group selector in navigation
+- General group (default)
+- Create/join private groups
+
+##### [NEW] [src/app/(main)/settings/page.tsx](file:///c:/Users/Admin/development/true_path_finder/src/app/(main)/settings/page.tsx)
+- View "tested" (archived) methods
+- Manage group memberships
+- Account settings (timezone, email)
+
+---
+
+### Shared Components
+
+| Component | Description |
+|-----------|-------------|
+| `TimerBar` | 21-minute countdown with info tooltip |
+| `GoalCard` | Goal display with choose/unchoose action |
+| `MethodCard` | Method preview with stats and actions |
+| `ReviewCard` | Review display with score and metadata |
+| `EventCard` | Event preview with countdown |
+| `PhaseIndicator` | Shows current event phase |
+| `ChatPanel` | Real-time chat for events |
+| `ComingSoonBadge` | Styled placeholder for future features |
+
+---
+
+## Verification Plan
+
+### Quick Test
+
+```powershell
+cd c:\Users\Admin\development\true_path_finder
+npm run dev
+# Should start at http://localhost:3000
+```
+
+### Manual Verification
+
+**Key flows to test after implementation:**
+1. **Onboarding Flow**: New user sees all 4-5 screens → creates account → lands on dashboard
+2. **Daily Intention**: Returning user must acknowledge goals before accessing dashboard  
+3. **Timer Behavior**: Timer counts down, pauses on blur, persists across navigations
+4. **Goal/Method CRUD**: Create, choose, unchoose goals and methods
+5. **Review Submission**: Submit review, appears in method's reviews list
+
