@@ -6,6 +6,7 @@ import { collection, addDoc, serverTimestamp } from 'firebase/firestore';
 import { db } from '@/src/lib/firebase/config';
 import { useAuth } from '@/lib/contexts/AuthContext';
 import { Button, Input, Card, Header } from '@/components';
+import { RepeatabilityConfig } from '@/types';
 
 interface PhaseConfig {
   hours: number;
@@ -23,6 +24,7 @@ interface EventFormData {
   close: PhaseConfig;
   startTime: string; // datetime-local format
   maxPerBatch: number;
+  repeatability: RepeatabilityConfig;
 }
 
 const InfoTooltip = ({ content }: { content: string }) => {
@@ -41,9 +43,8 @@ const InfoTooltip = ({ content }: { content: string }) => {
         i
       </button>
       {showTooltip && (
-        <div className="absolute left-1/2 -translate-x-1/2 bottom-full mb-2 w-64 p-3 bg-[var(--text-primary)] text-white text-sm rounded-lg shadow-lg z-10">
+        <div className="absolute left-1/2 -translate-x-1/2 bottom-full mb-2 w-64 p-3 bg-[var(--text-primary)] text-white text-sm rounded-[var(--radius-interactive)] shadow-lg z-10">
           {content}
-          <div className="absolute left-1/2 -translate-x-1/2 top-full w-0 h-0 border-l-4 border-r-4 border-t-4 border-transparent border-t-[var(--text-primary)]"></div>
         </div>
       )}
     </div>
@@ -124,6 +125,11 @@ function CreateEventContent() {
     close: { hours: 0, minutes: 5, seconds: 0 },
     startTime: '',
     maxPerBatch: 21,
+    repeatability: {
+      type: 'none',
+      interval: 1,
+      daysOfWeek: [],
+    },
   });
   
   // Update methodId when URL param changes
@@ -180,6 +186,7 @@ function CreateEventContent() {
         },
         startTime: new Date(formData.startTime),
         maxPerBatch: formData.maxPerBatch,
+        repeatability: formData.repeatability,
         createdBy: user.uid,
         createdAt: serverTimestamp(),
       };
@@ -233,7 +240,7 @@ function CreateEventContent() {
                 placeholder="Describe what participants will do during this event..."
                 required
                 rows={4}
-                className="w-full px-4 py-3 border-2 border-gray-200 rounded-lg focus:border-soft-blue focus:outline-none transition-colors"
+                className="w-full px-4 py-3 bg-[var(--surface-subtle)] rounded-[var(--radius-interactive)] focus:bg-[var(--surface-muted)] focus:outline-none transition-colors resize-none"
               />
             </div>
 
@@ -247,6 +254,166 @@ function CreateEventContent() {
                 onChange={(e: React.ChangeEvent<HTMLInputElement>) => setFormData({ ...formData, startTime: e.target.value })}
                 required
               />
+            </div>
+
+            <div className="mb-6">
+              <label className="flex items-center text-lg font-medium text-[var(--text-primary)] mb-2">
+                Max Participants per Batch
+                <InfoTooltip content="Batches are limited to 21 participants to ensure meaningful connection. If a new batch would have 6 or fewer people, they will be distributed among other batches even if they are 'full'." />
+              </label>
+              <Input
+                 type="number"
+                 value={formData.maxPerBatch}
+                 disabled
+                 className="bg-[var(--surface-muted)] text-[var(--text-muted)] cursor-not-allowed"
+              />
+              <p className="text-sm text-[var(--text-muted)] mt-1">Fixed at 21 for optimal group dynamics.</p>
+            </div>
+
+            <div className="mb-6">
+              <label className="block text-lg font-medium text-[var(--text-primary)] mb-2">
+                Repeatability
+              </label>
+              <div className="space-y-4">
+                <select
+                  value={formData.repeatability.type}
+                  onChange={(e) => setFormData({
+                    ...formData,
+                    repeatability: {
+                      ...formData.repeatability,
+                      type: e.target.value as RepeatabilityConfig['type'],
+                      daysOfWeek: e.target.value === 'weekly' ? formData.repeatability.daysOfWeek : [],
+                    }
+                  })}
+                  className="w-full px-4 py-3 bg-[var(--surface-subtle)] rounded-[var(--radius-interactive)] focus:bg-[var(--surface-muted)] focus:outline-none"
+                >
+                  <option value="none">Does not repeat</option>
+                  <option value="daily">Daily</option>
+                  <option value="weekly">Weekly</option>
+                  <option value="monthly_date">Monthly (on date)</option>
+                  <option value="monthly_day">Monthly (on day)</option>
+                </select>
+
+                {formData.repeatability.type !== 'none' && (
+                  <div className="space-y-4 p-4 bg-[var(--surface-subtle)] rounded-[var(--radius-interactive)]">
+                    <div className="flex items-center gap-2">
+                      <span>Repeat every</span>
+                      <Input
+                        type="number"
+                        min="1"
+                        value={formData.repeatability.interval}
+                        onChange={(e) => setFormData({
+                          ...formData,
+                          repeatability: {
+                            ...formData.repeatability,
+                            interval: parseInt(e.target.value) || 1
+                          }
+                        })}
+                        className="w-20"
+                      />
+                      <span>
+                        {formData.repeatability.type === 'daily' && 'day(s)'}
+                        {formData.repeatability.type === 'weekly' && 'week(s)'}
+                        {formData.repeatability.type.startsWith('monthly') && 'month(s)'}
+                      </span>
+                    </div>
+
+                    {formData.repeatability.type === 'weekly' && (
+                      <div>
+                        <label className="block text-sm font-medium mb-2">Days of Week</label>
+                        <div className="flex flex-wrap gap-2">
+                          {['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'].map((day, index) => (
+                            <button
+                              key={day}
+                              type="button"
+                              onClick={() => {
+                                const currentDays = formData.repeatability.daysOfWeek;
+                                const newDays = currentDays.includes(index)
+                                  ? currentDays.filter(d => d !== index)
+                                  : [...currentDays, index];
+                                setFormData({
+                                  ...formData,
+                                  repeatability: { ...formData.repeatability, daysOfWeek: newDays }
+                                });
+                              }}
+                              className={`px-3 py-1 rounded-full text-sm ${
+                                formData.repeatability.daysOfWeek.includes(index)
+                                  ? 'bg-[var(--primary)] text-white'
+                                  : 'bg-[var(--surface-muted)] text-[var(--text-secondary)]'
+                              }`}
+                            >
+                              {day}
+                            </button>
+                          ))}
+                        </div>
+                      </div>
+                    )}
+
+                    {formData.repeatability.type === 'monthly_date' && (
+                      <div>
+                        <label className="block text-sm font-medium mb-2">Day of Month</label>
+                         <Input
+                          type="number"
+                          min="1"
+                          max="31"
+                          value={formData.repeatability.dayOfMonth || 1}
+                          onChange={(e) => setFormData({
+                            ...formData,
+                            repeatability: {
+                              ...formData.repeatability,
+                              dayOfMonth: parseInt(e.target.value) || 1
+                            }
+                          })}
+                          className="w-full"
+                        />
+                      </div>
+                    )}
+
+                    {formData.repeatability.type === 'monthly_day' && (
+                      <div className="grid grid-cols-2 gap-4">
+                        <div>
+                          <label className="block text-sm font-medium mb-2">Week</label>
+                          <select
+                            value={formData.repeatability.weekOfMonth || 1}
+                            onChange={(e) => setFormData({
+                              ...formData,
+                              repeatability: {
+                                ...formData.repeatability,
+                                weekOfMonth: parseInt(e.target.value)
+                              }
+                            })}
+                            className="w-full px-4 py-2 bg-[var(--background)] rounded-[var(--radius-interactive)]"
+                          >
+                            <option value={1}>First</option>
+                            <option value={2}>Second</option>
+                            <option value={3}>Third</option>
+                            <option value={4}>Fourth</option>
+                            <option value={-1}>Last</option>
+                          </select>
+                        </div>
+                        <div>
+                          <label className="block text-sm font-medium mb-2">Day</label>
+                          <select
+                            value={formData.repeatability.dayOfWeekForMonthly || 0}
+                            onChange={(e) => setFormData({
+                              ...formData,
+                              repeatability: {
+                                ...formData.repeatability,
+                                dayOfWeekForMonthly: parseInt(e.target.value)
+                              }
+                            })}
+                            className="w-full px-4 py-2 bg-[var(--background)] rounded-[var(--radius-interactive)]"
+                          >
+                            {['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'].map((day, index) => (
+                              <option key={day} value={index}>{day}</option>
+                            ))}
+                          </select>
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                )}
+              </div>
             </div>
           </Card>
 
@@ -279,7 +446,7 @@ function CreateEventContent() {
             <h2 className="text-2xl font-semibold text-[var(--text-primary)] mb-6">Resources & Links</h2>
             
             {formData.links.map((link, index) => (
-              <div key={index} className="mb-4 p-4 bg-[var(--surface-subtle)] rounded-lg">
+              <div key={index} className="mb-4 p-4 bg-[var(--surface-subtle)] rounded-[var(--radius-interactive)]">
                 <div className="flex justify-between items-center mb-2">
                   <label className="text-md font-medium text-[var(--text-primary)]">
                     Link {index + 1}

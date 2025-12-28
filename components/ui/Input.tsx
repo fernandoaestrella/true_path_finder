@@ -28,7 +28,7 @@ export function Input({
       )}
       <input
         id={inputId}
-        className={`input ${error ? 'border-[var(--error)]' : ''} ${className}`}
+        className={`input ${error ? 'bg-red-50 ring-2 ring-red-100' : ''} ${className}`}
         {...props}
       />
       {hint && !error && (
@@ -69,7 +69,7 @@ export function Textarea({
       )}
       <textarea
         id={inputId}
-        className={`input min-h-[100px] resize-y ${error ? 'border-[var(--error)]' : ''} ${className}`}
+        className={`input min-h-[120px] resize-none ${error ? 'bg-red-50 ring-2 ring-red-100' : ''} ${className}`}
         {...props}
       />
       {hint && !error && (

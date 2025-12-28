@@ -125,6 +125,7 @@ export interface TPFEvent {
   phases: EventPhases;
   startTime: Date;
   maxPerBatch: number;
+  repeatability?: RepeatabilityConfig;
   createdBy: string;
 }
 
@@ -141,6 +142,15 @@ export interface Group {
   id: string;
   name: string;
   isGeneral: boolean;
-  createdBy: string;
   members: string[];
 }
+
+export interface RepeatabilityConfig {
+  type: 'none' | 'daily' | 'weekly' | 'monthly_date' | 'monthly_day';
+  interval: number;
+  daysOfWeek: number[]; // 0-6 (Sun-Sat)
+  dayOfMonth?: number; // 1-31
+  weekOfMonth?: number; // 1-5 (1st, 2nd, ... 5th/last)
+  dayOfWeekForMonthly?: number; // 0-6
+}
+

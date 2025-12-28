@@ -130,8 +130,8 @@ export default function DashboardPage() {
     <div className="min-h-screen bg-[var(--background)]">
       {/* Password prompt for timer reset */}
       {showPasswordPrompt && (
-        <div className="fixed inset-0 bg-black/70 flex items-center justify-center p-6 z-50">
-          <div className="bg-[var(--surface)] rounded-lg shadow-lg max-w-sm w-full p-6">
+        <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center p-6 z-50">
+          <div className="bg-[var(--surface-subtle)] rounded-2xl shadow-lg max-w-sm w-full p-6">
             <h3 className="text-lg font-semibold text-[var(--text-primary)] mb-4">
               Reset Timer
             </h3>

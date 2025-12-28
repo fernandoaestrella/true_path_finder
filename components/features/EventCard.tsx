@@ -95,24 +95,19 @@ export default function EventCard({ event }: EventCardProps) {
       
       <div className="space-y-2 mb-4">
         <div className="flex items-center text-gray-700">
-          <span className="font-medium mr-2">📅</span>
+          <span className="text-sm font-medium text-[var(--text-muted)] w-12">TIME</span>
           <span>{formatDateTime(event.startTime)}</span>
         </div>
         
         <div className="flex items-center text-gray-700">
-          <span className="font-medium mr-2">⏱️</span>
-          <span>{getTotalDuration()} total duration</span>
-        </div>
-        
-        <div className="flex items-center text-gray-700">
-          <span className="font-medium mr-2">👥</span>
-          <span>Max {event.maxPerBatch} per batch</span>
+          <span className="text-sm font-medium text-[var(--text-muted)] w-12">DUR</span>
+          <span>{getTotalDuration()}</span>
         </div>
       </div>
       
       {!isEventLive() && (
-        <div className="mb-4 p-3 bg-soft-blue/10 rounded-lg">
-          <div className="text-soft-blue font-semibold text-center">
+        <div className="mb-4 p-3 bg-[var(--primary-light)] rounded-[var(--radius-interactive)]">
+          <div className="text-[var(--primary-dark)] font-bold text-center">
             {getTimeUntilEvent()}
           </div>
         </div>

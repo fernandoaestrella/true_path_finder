@@ -136,7 +136,7 @@ A minimal, calm app where users discover what works by trying methods and sharin
 * Create Event screen:  
   * Title, description, external links  
   * Three phases with info tooltips explaining each:  
-    * Arrival/Warm-up — introductions, chat open  
+    * Arrival/Warm-up — introductions, text chat open  
     * Practice — focused work, chat closed  
     * Close/Reflection — sharing, chat open  
   * Duration for EACH phase individually (seconds → years)  

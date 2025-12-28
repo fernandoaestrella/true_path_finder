@@ -383,7 +383,7 @@ export default function MethodsPage({ params }: { params: PageParams }) {
                       </CardTitle>
                       <button
                         onClick={() => handleToggleMethod(method.id)}
-                        className={`px-3 py-1 text-xs rounded-full transition-all ${
+                        className={`px-3 py-1 text-xs rounded-full transition-all cursor-pointer ${
                           isChosen
                             ? 'bg-[var(--primary)] text-white'
                             : 'bg-[var(--background)] text-[var(--text-secondary)] hover:bg-[var(--border)]'
@@ -400,7 +400,7 @@ export default function MethodsPage({ params }: { params: PageParams }) {
                     
                     <div className="flex items-center gap-4 text-sm text-[var(--text-muted)]">
                       <div className="flex items-center gap-1">
-                        <span>{method.stats.avgRating > 0 ? method.stats.avgRating.toFixed(1) : '–'}</span>
+                        <span>{method.stats.avgRating > 0 ? method.stats.avgRating.toFixed(2) : '–'}</span>
                         <span className="text-xs">({method.stats.reviewCount})</span>
                       </div>
                       <div className="flex items-center gap-1">

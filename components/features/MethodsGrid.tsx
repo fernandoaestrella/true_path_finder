@@ -9,6 +9,8 @@ interface MethodsByGoal {
   methods: Method[];
 }
 
+import Link from 'next/link';
+
 interface MethodCardProps {
   method: Method;
   goalTitle: string;
@@ -17,45 +19,45 @@ interface MethodCardProps {
 }
 
 function MethodCard({ method, onWriteReview, onViewResources }: MethodCardProps) {
+  // ... inside MethodCard ...
   return (
-    <Card 
-      className="h-full card-clickable" 
-      onClick={() => onViewResources(method.id)}
-    >
-      <CardHeader>
-        <CardTitle as="h4" className="text-base">
-          {method.title}
-        </CardTitle>
-      </CardHeader>
-      <CardContent>
-        <p className="text-sm text-[var(--text-secondary)] line-clamp-2 mb-4">
-          {method.description}
-        </p>
+    <Card className="h-full flex flex-col">
+       <Link href={`/methods/${method.id}`} className="block flex-1 hover:bg-[var(--surface-muted)] transition-colors rounded-t-[var(--radius-interactive)]">
+          <CardHeader>
+            <CardTitle as="h4" className="text-base text-[var(--text-primary)]">
+              {method.title}
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            <p className="text-sm text-[var(--text-secondary)] line-clamp-2 mb-4">
+              {method.description}
+            </p>
+            
+            <div className="flex items-center gap-4 text-sm text-[var(--text-muted)] mb-4">
+              <div className="flex items-center gap-1">
+                <span>{method.stats.avgRating.toFixed(1)}</span>
+              </div>
+              <div className="flex items-center gap-1">
+                <span>{method.stats.activeUsers} trying</span>
+              </div>
+            </div>
+          </CardContent>
+       </Link>
         
-        <div className="flex items-center gap-4 text-sm text-[var(--text-muted)] mb-4">
-          <div className="flex items-center gap-1">
-            <span>{method.stats.avgRating.toFixed(1)}</span>
-          </div>
-          <div className="flex items-center gap-1">
-            <span>{method.stats.activeUsers} trying</span>
-          </div>
-        </div>
-        
-        <div className="flex gap-2"  onClick={(e) => e.stopPropagation()}>
-          <button
-            onClick={() => onViewResources(method.id)}
-            className="flex-1 py-2 px-3 text-sm rounded-md bg-[var(--surface-subtle)] hover:bg-[var(--border)] transition-colors cursor-pointer"
+       <div className="p-4 pt-0 mt-auto flex gap-2">
+          <Link
+            href={`/methods/${method.id}`}
+             className="flex-1 py-2 px-3 text-sm rounded-[var(--radius-interactive)] bg-[var(--surface-emphasis)] text-[var(--text-primary)] hover:bg-[var(--surface-hover)] transition-colors text-center font-medium"
           >
             Resources
-          </button>
-          <button
-            onClick={() => onWriteReview(method.id)}
-            className="flex-1 py-2 px-3 text-sm rounded-md bg-[var(--primary)] hover:bg-[var(--primary-dark)] transition-colors cursor-pointer"
+          </Link>
+          <Link
+            href={`/methods/${method.id}?tab=reviews`}
+             className="flex-1 py-2 px-3 text-sm rounded-[var(--radius-interactive)] bg-[var(--primary)] text-white hover:bg-[var(--primary-dark)] transition-colors text-center font-medium"
           >
             Review
-          </button>
+          </Link>
         </div>
-      </CardContent>
     </Card>
   );
 }

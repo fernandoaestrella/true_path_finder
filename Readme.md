@@ -1,5 +1,56 @@
 This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
 
+## Visual Style Guide
+
+### Design Philosophy
+True Path Finder uses a **clean, minimal, focus-first** design that reduces cognitive load and keeps users centered on their practice. **No borders anywhere** - visual separation is achieved through background colors and shadows only.
+
+### Color Palette
+
+#### Primary Colors
+- **Primary**: Soft blue (`#5B9FD7`) - calm, focused accent
+- **Primary Light**: Light blue (`#B8D4E8`) - hover states
+- **Primary Dark**: Deep blue (`#3E7CB8`) - active states
+
+#### Background/Surface Hierarchy (for separation without borders)
+- **Background**: Pure white (`#FFFFFF`) - page background
+- **Surface**: White (`#FFFFFF`) - elevated elements
+- **Surface Subtle**: Very light gray (`#F8F9FA`) - cards, clickable containers
+- **Surface Muted**: Light gray (`#F1F3F5`) - hover states on cards
+- **Surface Emphasis**: Gray (`#E9ECEF`) - stronger separation
+- **Surface Hover**: Darker gray (`#DEE2E6`) - active/pressed states
+
+#### Text Colors
+- **Text Primary**: Dark slate (`#1A1F2E`) - headings, important content
+- **Text Secondary**: Medium gray (`#4A5568`) - body text
+- **Text Muted**: Light gray (`#718096`) - hints, placeholders
+
+### Clickable Areas
+All interactive elements demonstrate their clickable nature through:
+- **Background containers**: Buttons and links have a subtle background (`surface-subtle`) that changes on hover
+- **Cards**: Background color transitions from `surface-subtle` to `surface-muted` on hover
+- **Shadows**: Increase on hover for depth
+- **Cursor**: Always shows `pointer` on interactive elements
+
+### Header Navigation
+- **Dashboard link**: Hidden when on Dashboard
+- **Goals link**: Only visible when on Dashboard
+- **Timer**: Always centered
+- **Menu**: Hamburger icon opens side panel with Logout option
+
+### Cards
+- **NO BORDERS** - separation via background color (`surface-subtle`)
+- Background darkens slightly on hover (`surface-muted`)
+- Shadow increases on hover
+- Full card is clickable where applicable
+
+### Typography
+- No emojis in UI (clean, professional aesthetic)
+- Larger, more clickable buttons and tabs
+- Clear visual hierarchy with font weights
+
+---
+
 ## Getting Started
 
 First, run the development server:

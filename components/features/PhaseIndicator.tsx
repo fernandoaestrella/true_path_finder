@@ -11,15 +11,17 @@ interface PhaseIndicatorProps {
     practice: { durationSeconds: number };
     close: { durationSeconds: number };
   };
+
   elapsedSeconds: number;
+  isEventStarted?: boolean;
 }
 
-export default function PhaseIndicator({ currentPhase, phases, elapsedSeconds }: PhaseIndicatorProps) {
+export default function PhaseIndicator({ currentPhase, phases, elapsedSeconds, isEventStarted = true }: PhaseIndicatorProps) {
   const phaseData = [
     {
       name: 'Arrival',
       key: 'arrival' as Phase,
-      description: 'Welcome & Introductions',
+      description: 'Welcome, Introductions & Questions',
       icon: '👋',
       color: 'soft-blue',
     },
@@ -94,10 +96,11 @@ export default function PhaseIndicator({ currentPhase, phases, elapsedSeconds }:
   };
 
   return (
-    <div className="bg-white rounded-lg shadow-md p-6 mb-6">
-      <h2 className="text-2xl font-semibold text-charcoal mb-6 text-center">
+    <div className="bg-[var(--surface-subtle)] rounded-[var(--radius-interactive)] shadow-sm p-6 mb-6">
+      <h2 className="text-2xl font-semibold text-charcoal mb-2 text-center">
         Event Progress
       </h2>
+
       
       {/* Phase Timeline */}
       <div className="flex items-center justify-between mb-8">
@@ -110,15 +113,16 @@ export default function PhaseIndicator({ currentPhase, phases, elapsedSeconds }:
                   w-16 h-16 rounded-full flex items-center justify-center text-3xl mb-3
                   transition-all duration-500
                   ${
-                    currentPhase === phase.key
-                      ? 'bg-soft-blue text-white scale-110 shadow-lg'
+                    !isEventStarted
+                      ? 'bg-[var(--surface-muted)] text-[var(--text-muted)] opacity-50'
+                      : currentPhase === phase.key
+                      ? 'bg-[var(--primary)] text-white scale-110 shadow-lg'
                       : isPhasePast(phase.key)
-                      ? 'bg-sage-green text-white'
-                      : 'bg-gray-200 text-gray-400'
+                      ? 'bg-[var(--secondary)] text-white'
+                      : 'bg-[var(--surface-muted)] text-[var(--text-muted)]'
                   }
                 `}
               >
-                {phase.icon}
               </div>
               
               {/* Phase Name */}
@@ -127,27 +131,29 @@ export default function PhaseIndicator({ currentPhase, phases, elapsedSeconds }:
                   className={`
                     font-semibold mb-1 transition-colors
                     ${
-                      currentPhase === phase.key
-                        ? 'text-soft-blue text-lg'
-                        : isPhasePast(phase.key)
-                        ? 'text-sage-green'
-                        : 'text-gray-400'
-                    }
-                  `}
+                    !isEventStarted
+                      ? 'text-[var(--text-muted)]'
+                      : currentPhase === phase.key
+                      ? 'text-[var(--primary)] text-lg'
+                      : isPhasePast(phase.key)
+                      ? 'text-[var(--secondary)]'
+                      : 'text-[var(--text-muted)]'
+                  }
+                `}
                 >
                   {phase.name}
                 </div>
                 <div className="text-sm text-gray-500">{phase.description}</div>
                 
                 {/* Current Phase Timer */}
-                {currentPhase === phase.key && (
+                {currentPhase === phase.key && isEventStarted && (
                   <div className="mt-2 text-soft-blue font-mono font-bold">
                     {formatDuration(getRemainingTime(phase.key))} left
                   </div>
                 )}
                 
                 {/* Phase Duration */}
-                {currentPhase !== phase.key && (
+                {(currentPhase !== phase.key || !isEventStarted) && (
                   <div className="mt-2 text-xs text-gray-400">
                     {formatDuration(phases[phase.key].durationSeconds)}
                   </div>
@@ -155,42 +161,50 @@ export default function PhaseIndicator({ currentPhase, phases, elapsedSeconds }:
               </div>
               
               {/* Progress Bar */}
-              <div className="w-full mt-3 bg-gray-200 rounded-full h-2 overflow-hidden">
+              <div className="w-full mt-3 bg-[var(--surface-muted)] rounded-full h-2 overflow-hidden">
                 <div
                   className={`
                     h-full transition-all duration-500
                     ${
-                      currentPhase === phase.key
-                        ? 'bg-soft-blue'
+                      !isEventStarted
+                        ? 'bg-[var(--surface-muted)]'
+                        : currentPhase === phase.key
+                        ? 'bg-[var(--primary)]'
                         : isPhasePast(phase.key)
-                        ? 'bg-sage-green'
-                        : 'bg-gray-200'
+                        ? 'bg-[var(--secondary)]'
+                        : 'bg-[var(--surface-muted)]'
                     }
                   `}
-                  style={{ width: `${getPhaseProgress(phase.key)}%` }}
+                  style={{ width: `${!isEventStarted ? 0 : getPhaseProgress(phase.key)}%` }}
                 />
               </div>
             </div>
             
             {/* Connector Line */}
             {index < phaseData.length - 1 && (
-              <div className="w-12 h-1 mx-2 mb-16 bg-gray-300" />
+              <div className="w-12 h-1 mx-2 mb-16 bg-[var(--surface-emphasis)] rounded-full" />
             )}
           </React.Fragment>
         ))}
       </div>
       
       {/* Chat Status Indicator */}
-      <div className="text-center p-4 rounded-lg bg-warm-gray">
-        {currentPhase === 'practice' ? (
-          <div className="flex items-center justify-center gap-2 text-gray-600">
-            <span className="w-3 h-3 rounded-full bg-gray-400"></span>
-            <span className="font-medium">Chat is disabled during practice</span>
-          </div>
+      <div className="text-center p-4 rounded-[var(--radius-interactive)] bg-[var(--surface-muted)]">
+        {isEventStarted ? (
+          currentPhase === 'practice' ? (
+            <div className="flex items-center justify-center gap-2 text-[var(--text-secondary)]">
+              <span className="w-3 h-3 rounded-full bg-[var(--text-muted)]"></span>
+              <span className="font-medium">Chat is disabled during practice</span>
+            </div>
+          ) : (
+            <div className="flex items-center justify-center gap-2 text-[var(--primary)]">
+              <span className="w-3 h-3 rounded-full bg-[var(--primary)] animate-pulse"></span>
+              <span className="font-medium">Chat is active</span>
+            </div>
+          )
         ) : (
-          <div className="flex items-center justify-center gap-2 text-sage-green">
-            <span className="w-3 h-3 rounded-full bg-sage-green animate-pulse"></span>
-            <span className="font-medium">Chat is active</span>
+          <div className="flex items-center justify-center gap-2 text-[var(--text-secondary)]">
+            <span className="font-medium">Event starting soon...</span>
           </div>
         )}
       </div>

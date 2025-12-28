@@ -1,6 +1,6 @@
 'use client';
 
-import React from 'react';
+import React, { useState } from 'react';
 import { TimerBar, LogoutIcon } from '@/components';
 import { useSessionTimer } from '@/lib/hooks/useSessionTimer';
 import { useAuth } from '@/lib/contexts/AuthContext';
@@ -13,42 +13,98 @@ interface HeaderProps {
 export function Header({ currentPage = 'other', timerExtra }: HeaderProps) {
   const { logout } = useAuth();
   const { minutes, seconds, isPaused } = useSessionTimer();
+  const [isMenuOpen, setIsMenuOpen] = useState(false);
 
   return (
-    <header className="sticky top-0 z-30 pt-8 pb-6 bg-[var(--background)]">
-      <div className="container flex items-center justify-between">
-        {/* Left nav */}
-        <div className="flex-1 flex items-center gap-4">
-          {currentPage !== 'dashboard' && (
-            <a href="/dashboard" className="text-[var(--text-secondary)] hover:text-[var(--text-primary)] cursor-pointer">
-              Dashboard
-            </a>
-          )}
-          {currentPage !== 'goals' && (
-            <a href="/goals" className="text-[var(--text-secondary)] hover:text-[var(--text-primary)] cursor-pointer">
-              Goals
-            </a>
-          )}
+    <>
+      <header className="sticky top-0 z-30 pt-8 pb-6 bg-[var(--background)]">
+        <div className="container flex items-center justify-between">
+          {/* Left nav */}
+          <div className="flex-1 flex items-center gap-2">
+            {currentPage !== 'dashboard' && (
+              <a 
+                href="/dashboard" 
+                className="px-3 py-2 rounded-[var(--radius-interactive)] bg-[var(--surface-subtle)] text-[var(--text-secondary)] hover:bg-[var(--primary-light)] hover:text-[var(--text-primary)] cursor-pointer transition-colors"
+              >
+                Dashboard
+              </a>
+            )}
+            {currentPage === 'dashboard' && (
+              <a 
+                href="/goals" 
+                className="px-3 py-2 rounded-[var(--radius-interactive)] bg-[var(--surface-subtle)] text-[var(--text-secondary)] hover:bg-[var(--primary-light)] hover:text-[var(--text-primary)] cursor-pointer transition-colors"
+              >
+                Goals
+              </a>
+            )}
+          </div>
+          
+          {/* Timer centered */}
+          <div className="flex items-center gap-2">
+            <TimerBar minutes={minutes} seconds={seconds} isPaused={isPaused} />
+            {timerExtra}
+          </div>
+          
+          {/* Hamburger menu on the right */}
+          <div className="flex-1 flex justify-end">
+            <button
+              onClick={() => setIsMenuOpen(true)}
+              className="p-2 rounded-[var(--radius-interactive)] bg-[var(--surface-subtle)] hover:bg-[var(--primary-light)] cursor-pointer transition-colors"
+              aria-label="Open menu"
+              title="Menu"
+            >
+              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                <line x1="3" y1="6" x2="21" y2="6" />
+                <line x1="3" y1="12" x2="21" y2="12" />
+                <line x1="3" y1="18" x2="21" y2="18" />
+              </svg>
+            </button>
+          </div>
         </div>
-        
-        {/* Timer centered */}
-        <div className="flex items-center gap-2">
-          <TimerBar minutes={minutes} seconds={seconds} isPaused={isPaused} />
-          {timerExtra}
-        </div>
-        
-        {/* Logout icon on the right */}
-        <div className="flex-1 flex justify-end">
-          <button
-            onClick={logout}
-            className="cursor-pointer hover:text-[var(--primary)] transition-colors text-[var(--text-secondary)]" 
-            aria-label="Logout"
-            title="Logout"
-          >
-            <LogoutIcon size={20} />
-          </button>
+      </header>
+
+      {/* Side Menu Overlay */}
+      {isMenuOpen && (
+        <div 
+          className="fixed inset-0 bg-black/30 z-40"
+          onClick={() => setIsMenuOpen(false)}
+        />
+      )}
+
+      {/* Side Menu Panel */}
+      <div 
+        className={`fixed top-0 right-0 h-full w-64 bg-[var(--background)] shadow-lg z-50 transform transition-transform duration-200 ${
+          isMenuOpen ? 'translate-x-0' : 'translate-x-full'
+        }`}
+      >
+        <div className="p-4">
+          <div className="flex justify-end mb-6">
+            <button
+              onClick={() => setIsMenuOpen(false)}
+              className="p-2 rounded-[var(--radius-interactive)] bg-[var(--surface-subtle)] hover:bg-[var(--primary-light)] cursor-pointer transition-colors"
+              aria-label="Close menu"
+            >
+              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                <line x1="18" y1="6" x2="6" y2="18" />
+                <line x1="6" y1="6" x2="18" y2="18" />
+              </svg>
+            </button>
+          </div>
+          
+          <nav className="space-y-2">
+            <button
+              onClick={() => {
+                setIsMenuOpen(false);
+                logout();
+              }}
+              className="w-full flex items-center gap-3 px-4 py-3 rounded-[var(--radius-interactive)] bg-[var(--surface-subtle)] hover:bg-[var(--primary-light)] cursor-pointer transition-colors text-[var(--text-primary)]"
+            >
+              <LogoutIcon size={20} />
+              <span>Logout</span>
+            </button>
+          </nav>
         </div>
       </div>
-    </header>
+    </>
   );
 }

@@ -188,7 +188,7 @@ export default function GoalsPage() {
         
         {/* Chosen Goals Summary */}
         {chosenGoalIds.size > 0 && (
-          <div className="mb-6 p-4 bg-[rgba(107,155,209,0.1)] rounded-lg">
+          <div className="mb-6 p-4 bg-[var(--surface-emphasis)] rounded-[var(--radius-interactive)]">
             <p className="text-sm text-[var(--primary)]">
               <strong>{chosenGoalIds.size}</strong> goal{chosenGoalIds.size !== 1 ? 's' : ''} chosen
             </p>
@@ -213,7 +213,7 @@ export default function GoalsPage() {
                 <Card
                   key={goal.id}
                   className={`cursor-pointer transition-all ${
-                    isChosen ? 'border-[var(--primary)] bg-[rgba(107,155,209,0.05)]' : ''
+                    isChosen ? 'ring-2 ring-[var(--primary)] shadow-md' : ''
                   }`}
                   onClick={() => handleToggleGoal(goal.id)}
                 >
@@ -222,13 +222,13 @@ export default function GoalsPage() {
                       <CardTitle as="h4" className="text-base">
                         {goal.title}
                       </CardTitle>
-                      <div className={`w-5 h-5 rounded-full border-2 flex-shrink-0 flex items-center justify-center transition-all ${
+                      <div className={`w-6 h-6 rounded-full flex-shrink-0 flex items-center justify-center transition-all ${
                         isChosen
-                          ? 'border-[var(--primary)] bg-[var(--primary)]'
-                          : 'border-[var(--border)]'
+                          ? 'bg-[var(--primary)]'
+                          : 'bg-[var(--surface-emphasis)]'
                       }`}>
                         {isChosen && (
-                          <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="3">
+                          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="3">
                             <polyline points="20,6 9,17 4,12" />
                           </svg>
                         )}
@@ -256,8 +256,8 @@ export default function GoalsPage() {
         )}
         
         {/* Related Goals Placeholder */}
-        <div className="mt-12 p-6 border border-dashed border-[var(--border)] rounded-lg">
-          <div className="coming-soon mb-2">Coming Soon</div>
+        <div className="mt-12 p-8 bg-[var(--surface-subtle)] rounded-[var(--radius-interactive)]">
+          <div className="inline-block px-3 py-1 rounded-full bg-[var(--surface-emphasis)] text-[var(--text-muted)] text-xs font-bold mb-3">Coming Soon</div>
           <h4 className="text-[var(--text-muted)] italic">
             Related Goals — See goals similar to the ones you&apos;re exploring
           </h4>

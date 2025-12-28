@@ -102,19 +102,19 @@ const onboardingSteps: OnboardingStep[] = [
           <div className="flex items-center gap-3 p-3 bg-[var(--surface-subtle)] rounded-lg">
             <div>
               <span className="font-medium text-[var(--text-primary)]">Arrival</span>
-              <span className="text-sm block">Introductions, chat open</span>
+              <span className="text-sm block">Introductions, questions, text chat open</span>
             </div>
           </div>
           <div className="flex items-center gap-3 p-3 bg-[var(--surface-subtle)] rounded-lg">
             <div>
               <span className="font-medium text-[var(--text-primary)]">Practice</span>
-              <span className="text-sm block">Focused work, chat closed</span>
+              <span className="text-sm block">Focused work, text chat closed</span>
             </div>
           </div>
           <div className="flex items-center gap-3 p-3 bg-[var(--surface-subtle)] rounded-lg">
             <div>
               <span className="font-medium text-[var(--text-primary)]">Reflection</span>
-              <span className="text-sm block">Sharing insights, chat open</span>
+              <span className="text-sm block">Sharing insights, text chat open</span>
             </div>
           </div>
         </div>

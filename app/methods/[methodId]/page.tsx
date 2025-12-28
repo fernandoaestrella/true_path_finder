@@ -5,7 +5,7 @@ import { useSearchParams } from 'next/navigation';
 import { Button, Textarea, Card, CardHeader, CardTitle, CardContent, Header } from '@/components';
 import { useAuth } from '@/lib/contexts/AuthContext';
 import { Method, Review, TPFEvent } from '@/types';
-import { collection, getDocs, addDoc, doc, getDoc, serverTimestamp, updateDoc, query, where, orderBy } from 'firebase/firestore';
+import { collection, getDocs, addDoc, doc, getDoc, serverTimestamp, updateDoc, query, where, orderBy, setDoc, deleteDoc, increment } from 'firebase/firestore';
 import { db } from '@/src/lib/firebase/config';
 import { EventCard } from '@/components';
 
@@ -19,6 +19,7 @@ function MethodDetailContent({ params }: { params: PageParams }) {
   const [method, setMethod] = useState<Method | null>(null);
   const [reviews, setReviews] = useState<Review[]>([]);
   const [events, setEvents] = useState<TPFEvent[]>([]);
+  const [isTrying, setIsTrying] = useState(false);
   
   // Initialize active tab from URL param
   const tabParam = searchParams.get('tab');
@@ -28,7 +29,7 @@ function MethodDetailContent({ params }: { params: PageParams }) {
   
   // Review form
   const [showReviewForm, setShowReviewForm] = useState(false);
-  const [reviewScore, setReviewScore] = useState(3);
+  const [reviewScore, setReviewScore] = useState(0);
   const [reviewContent, setReviewContent] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
   
@@ -108,7 +109,14 @@ function MethodDetailContent({ params }: { params: PageParams }) {
             return end >= now;
           });
         
+        
         setEvents(methodEvents);
+
+        // Check if user is trying this method
+        const chosenRef = doc(db, 'users', user.uid, 'chosenMethods', methodId);
+        const chosenDoc = await getDoc(chosenRef);
+        setIsTrying(chosenDoc.exists());
+
       } catch (error) {
         console.error('Error fetching data:', error);
       } finally {
@@ -118,7 +126,36 @@ function MethodDetailContent({ params }: { params: PageParams }) {
     
     fetchData();
   }, [user, methodId]);
-  
+
+  const handleToggleTrying = async () => {
+    if (!user || !method) return;
+
+    try {
+      const chosenRef = doc(db, 'users', user.uid, 'chosenMethods', methodId);
+      const methodRef = doc(db, 'methods', methodId);
+
+      if (isTrying) {
+        // Stop trying
+        await deleteDoc(chosenRef);
+        await updateDoc(methodRef, { 'stats.activeUsers': increment(-1) });
+        setIsTrying(false);
+        setMethod(prev => prev ? { ...prev, stats: { ...prev.stats, activeUsers: prev.stats.activeUsers - 1 } } : null);
+      } else {
+        // Start trying
+        await setDoc(chosenRef, {
+          addedAt: serverTimestamp(),
+          attempts: [],
+          status: 'active',
+        });
+        await updateDoc(methodRef, { 'stats.activeUsers': increment(1) });
+        setIsTrying(true);
+        setMethod(prev => prev ? { ...prev, stats: { ...prev.stats, activeUsers: prev.stats.activeUsers + 1 } } : null);
+      }
+    } catch (error) {
+      console.error('Error toggling trying status:', error);
+    }
+  };
+
   const handleSubmitReview = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!user || !reviewContent.trim()) return;
@@ -126,16 +163,18 @@ function MethodDetailContent({ params }: { params: PageParams }) {
     setIsSubmitting(true);
     
     try {
-      const reviewDoc = await addDoc(collection(db, 'reviews'), {
+      const reviewData = {
         methodId,
         userId: user.uid,
-        score: reviewScore,
+        score: Number(reviewScore), // Ensure it's a number
         content: reviewContent.trim(),
         attemptsSummary: { count: 0, totalDurationMinutes: 0 },
         metMinimum: false,
         createdAt: serverTimestamp(),
         updatedAt: serverTimestamp(),
-      });
+      };
+      
+      const reviewDoc = await addDoc(collection(db, 'reviews'), reviewData);
       
       // Update method stats
       const newReviewCount = (method?.stats.reviewCount || 0) + 1;
@@ -168,7 +207,7 @@ function MethodDetailContent({ params }: { params: PageParams }) {
       
       // Reset form
       setReviewContent('');
-      setReviewScore(3);
+      setReviewScore(0);
       setShowReviewForm(false);
     } catch (error) {
       console.error('Error submitting review:', error);
@@ -214,9 +253,22 @@ function MethodDetailContent({ params }: { params: PageParams }) {
             {method.description}
           </p>
           
+          <div className="mb-4">
+            <button
+              onClick={handleToggleTrying}
+              className={`px-4 py-2 rounded-full font-medium transition-all cursor-pointer ${
+                isTrying
+                  ? 'bg-[var(--primary)] text-white shadow-md'
+                  : 'bg-[var(--surface-subtle)] text-[var(--text-secondary)] hover:bg-[var(--surface-muted)]'
+              }`}
+            >
+              {isTrying ? '✓ Trying' : '+ Try This Method'}
+            </button>
+          </div>
+          
           <div className="flex items-center gap-6 text-sm">
             <div className="flex items-center gap-1">
-              <span className="font-medium">{method.stats.avgRating > 0 ? method.stats.avgRating.toFixed(1) : '–'}</span>
+              <span className="font-medium">{method.stats.avgRating > 0 ? method.stats.avgRating.toFixed(2) : '–'}</span>
               <span className="text-[var(--text-muted)]">({method.stats.reviewCount} reviews)</span>
             </div>
             <div className="flex items-center gap-1">
@@ -229,33 +281,33 @@ function MethodDetailContent({ params }: { params: PageParams }) {
         </div>
         
         {/* Tabs */}
-        <div className="flex gap-2 mb-8">
+        <div className="flex gap-2 mb-8 p-1 bg-[var(--surface-subtle)] rounded-[var(--radius-interactive)]">
           <button
             onClick={() => setActiveTab('resources')}
-            className={`flex-1 py-4 px-6 text-base font-medium rounded-lg transition-all cursor-pointer ${
+            className={`flex-1 py-3 px-6 text-base font-medium rounded-[var(--radius-interactive)] transition-all cursor-pointer ${
               activeTab === 'resources'
-                ? 'bg-[var(--primary)] text-white'
-                : 'bg-[var(--surface-subtle)] text-[var(--text-secondary)] hover:bg-[var(--border)]'
+                ? 'bg-white shadow-sm text-[var(--primary)]'
+                : 'text-[var(--text-secondary)] hover:bg-[var(--surface-muted)]'
             }`}
           >
             Resources
           </button>
           <button
             onClick={() => setActiveTab('reviews')}
-            className={`flex-1 py-4 px-6 text-base font-medium rounded-lg transition-all cursor-pointer ${
+            className={`flex-1 py-3 px-6 text-base font-medium rounded-[var(--radius-interactive)] transition-all cursor-pointer ${
               activeTab === 'reviews'
-                ? 'bg-[var(--primary)] text-white'
-                : 'bg-[var(--surface-subtle)] text-[var(--text-secondary)] hover:bg-[var(--border)]'
+                ? 'bg-white shadow-sm text-[var(--primary)]'
+                : 'text-[var(--text-secondary)] hover:bg-[var(--surface-muted)]'
             }`}
           >
             Reviews ({reviews.length})
           </button>
           <button
             onClick={() => setActiveTab('events')}
-            className={`flex-1 py-4 px-6 text-base font-medium rounded-lg transition-all cursor-pointer ${
+            className={`flex-1 py-3 px-6 text-base font-medium rounded-[var(--radius-interactive)] transition-all cursor-pointer ${
               activeTab === 'events'
-                ? 'bg-[var(--primary)] text-white'
-                : 'bg-[var(--surface-subtle)] text-[var(--text-secondary)] hover:bg-[var(--border)]'
+                ? 'bg-white shadow-sm text-[var(--primary)]'
+                : 'text-[var(--text-secondary)] hover:bg-[var(--surface-muted)]'
             }`}
           >
             Events ({events.length})
@@ -278,7 +330,7 @@ function MethodDetailContent({ params }: { params: PageParams }) {
                     href={resource.url}
                     target="_blank"
                     rel="noopener noreferrer"
-                    className="block p-4 bg-[var(--surface)] border border-[var(--border)] rounded-lg hover:border-[var(--primary)] transition-colors"
+                    className="block p-4 bg-[var(--surface-subtle)] rounded-xl hover:bg-[var(--surface-muted)] transition-colors"
                   >
                     <div className="flex items-center gap-3">
                       <span className="text-xl">🔗</span>
@@ -303,7 +355,7 @@ function MethodDetailContent({ params }: { params: PageParams }) {
             {/* Write Review Button */}
             <div className="mb-6">
               <Button onClick={() => setShowReviewForm(!showReviewForm)}>
-                {showReviewForm ? 'Cancel' : '✍️ Write a Review'}
+                {showReviewForm ? 'Cancel' : 'Write a Review'}
               </Button>
             </div>
             
@@ -325,16 +377,19 @@ function MethodDetailContent({ params }: { params: PageParams }) {
                             key={score}
                             type="button"
                             onClick={() => setReviewScore(score)}
-                            className={`w-10 h-10 rounded-lg text-lg transition-all ${
+                            className={`w-12 h-12 rounded-[var(--radius-interactive)] text-2xl transition-all flex items-center justify-center cursor-pointer ${
                               score <= reviewScore
-                                ? 'bg-[var(--accent)] text-white'
-                                : 'bg-[var(--background)] text-[var(--text-muted)]'
+                                ? 'bg-[var(--accent)] text-white shadow-sm'
+                                : 'bg-[var(--surface-subtle)] text-[var(--text-muted)] hover:bg-[var(--accent-muted)] hover:text-[var(--accent)]'
                             }`}
                           >
-                            ⭐
+                            ★
                           </button>
                         ))}
                       </div>
+                      {reviewScore === 0 && (
+                        <p className="text-sm text-red-500 mt-1 italic">Please select a rating</p>
+                      )}
                     </div>
                     
                     <Textarea
@@ -345,7 +400,11 @@ function MethodDetailContent({ params }: { params: PageParams }) {
                       required
                     />
                     
-                    <Button type="submit" isLoading={isSubmitting}>
+                    <Button 
+                      type="submit" 
+                      isLoading={isSubmitting}
+                      disabled={reviewScore === 0}
+                    >
                       Submit Review
                     </Button>
                   </form>
@@ -369,9 +428,9 @@ function MethodDetailContent({ params }: { params: PageParams }) {
                           {[1, 2, 3, 4, 5].map((score) => (
                             <span
                               key={score}
-                              className={score <= review.score ? 'text-[var(--accent)]' : 'text-[var(--border)]'}
+                              className={score <= review.score ? 'text-[var(--accent)]' : 'text-[var(--surface-hover)]'}
                             >
-                              ⭐
+                              ★
                             </span>
                           ))}
                         </div>

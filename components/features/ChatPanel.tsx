@@ -63,17 +63,19 @@ export default function ChatPanel({ eventId, batchNumber, isEnabled }: ChatPanel
   const handleSendMessage = async (e: React.FormEvent) => {
     e.preventDefault();
     
-    if (!newMessage.trim() || !user || !userData || !isEnabled) {
+    if (!newMessage.trim() || !user || !isEnabled) {
       return;
     }
 
     setIsSending(true);
 
+    const userName = userData?.email?.split('@')[0] || user.email?.split('@')[0] || 'User';
+
     try {
       const messagesRef = ref(rtdb, chatPath);
       await push(messagesRef, {
         userId: user.uid,
-        userName: userData.email.split('@')[0], // Use email prefix as username
+        userName: userName,
         message: newMessage.trim(),
         timestamp: serverTimestamp(),
       });
@@ -94,9 +96,8 @@ export default function ChatPanel({ eventId, batchNumber, isEnabled }: ChatPanel
 
   if (!isEnabled) {
     return (
-      <div className="bg-white rounded-lg shadow-md p-6">
+      <div className="bg-[var(--surface-subtle)] rounded-2xl shadow-sm p-6">
         <div className="text-center py-12">
-          <div className="text-6xl mb-4">🧘</div>
           <h3 className="text-xl font-semibold text-charcoal mb-2">
             Practice Phase in Progress
           </h3>
@@ -111,9 +112,9 @@ export default function ChatPanel({ eventId, batchNumber, isEnabled }: ChatPanel
   }
 
   return (
-    <div className="bg-white rounded-lg shadow-md flex flex-col h-[500px]">
+    <div className="bg-[var(--surface-subtle)] rounded-2xl shadow-sm flex flex-col h-[500px]">
       {/* Header */}
-      <div className="p-4 border-b border-gray-200">
+      <div className="p-4">
         <h3 className="text-lg font-semibold text-charcoal">
           Batch {batchNumber} Chat
         </h3>
@@ -170,7 +171,7 @@ export default function ChatPanel({ eventId, batchNumber, isEnabled }: ChatPanel
       </div>
 
       {/* Input Area */}
-      <form onSubmit={handleSendMessage} className="p-4 border-t border-gray-200">
+      <form onSubmit={handleSendMessage} className="p-4">
         <div className="flex gap-2">
           <Input
             type="text"

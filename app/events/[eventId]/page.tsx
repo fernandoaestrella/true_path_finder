@@ -10,6 +10,12 @@ import PhaseIndicator from '@/components/features/PhaseIndicator';
 import ChatPanel from '@/components/features/ChatPanel';
 import { Button, Card, Header } from '@/components';
 
+const getOrdinal = (n: number) => {
+  const s = ["th", "st", "nd", "rd"];
+  const v = n % 100;
+  return n + (s[(v - 20) % 10] || s[v] || s[0]);
+};
+
 type Phase = 'arrival' | 'practice' | 'close' | 'ended';
 
 export default function EventPage() {
@@ -42,6 +48,7 @@ export default function EventPage() {
             phases: data.phases,
             startTime: data.startTime.toDate(),
             maxPerBatch: data.maxPerBatch,
+            repeatability: data.repeatability,
             createdBy: data.createdBy,
           });
         }
@@ -106,7 +113,7 @@ export default function EventPage() {
       // Event hasn't started yet
       if (elapsed < 0) {
         setCurrentPhase('arrival');
-        setElapsedSeconds(0);
+        setElapsedSeconds(elapsed);
         return;
       }
       
@@ -172,16 +179,8 @@ export default function EventPage() {
     return Math.max(...batches.map((b) => b.batchNumber)) + 1;
   };
 
-  // Auto-join batch on arrival phase
-  useEffect(() => {
-    const autoJoin = async () => {
-      if (!user || !event || selectedBatch !== null || currentPhase !== 'arrival') return;
-      const nextBatch = getNextAvailableBatch();
-      await handleJoinBatch(nextBatch);
-    };
-    autoJoin();
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [user, event, currentPhase, selectedBatch]);
+  // Auto-join removed in favor of manual batch selection
+  // useEffect(() => { ... }, []);
 
   if (isLoading) {
     return (
@@ -214,8 +213,41 @@ export default function EventPage() {
       <div className="container py-8">
         {/* Event Header */}
         <div className="mb-6">
-          <h1 className="text-3xl font-bold text-[var(--text-primary)] mb-2">{event.title}</h1>
+          <div className="flex justify-between items-start">
+             <div>
+                <h1 className="text-3xl font-bold text-[var(--text-primary)] mb-2">{event.title}</h1>
+                 {event.repeatability && event.repeatability.type !== 'none' && (
+                  <div className="inline-block bg-[var(--surface-subtle)] px-3 py-1 rounded-full text-sm text-[var(--text-secondary)] mb-4">
+                    🔁 {
+                      event.repeatability.type === 'daily' ? `Repeats every ${event.repeatability.interval} day(s)` :
+                      event.repeatability.type === 'weekly' ? `Repeats every ${event.repeatability.interval} week(s) on ${event.repeatability.daysOfWeek.map(d => ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'][d]).join(', ')}` :
+                      event.repeatability.type === 'monthly_date' ? `Repeats monthly on the ${getOrdinal(event.repeatability.dayOfMonth || 1)}` :
+                      event.repeatability.type === 'monthly_day' ? `Repeats monthly on the ${event.repeatability.weekOfMonth === -1 ? 'last' : getOrdinal(event.repeatability.weekOfMonth || 1)} ${['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'][event.repeatability.dayOfWeekForMonthly || 0]}` :
+                      'Repeats'
+                    }
+                  </div>
+                )}
+             </div>
+          </div>
           <p className="text-[var(--text-secondary)]">{event.description}</p>
+          
+          {elapsedSeconds < 0 && (
+            <div className="mt-4 p-3 bg-[var(--surface-subtle)] rounded-[var(--radius-interactive)] inline-block">
+              <span className="font-semibold text-[var(--primary)]">
+                Event starts in {
+                  (() => {
+                    const diff = Math.abs(elapsedSeconds);
+                    const hours = Math.floor(diff / 3600);
+                    const minutes = Math.floor((diff % 3600) / 60);
+                    const seconds = diff % 60;
+                    if (hours > 0) return `${hours}h ${minutes}m ${seconds}s`;
+                    if (minutes > 0) return `${minutes}m ${seconds}s`;
+                    return `${seconds}s`;
+                  })()
+                }
+              </span>
+            </div>
+          )}
         </div>
 
         {/* Event Links */}
@@ -244,6 +276,7 @@ export default function EventPage() {
             currentPhase={currentPhase as 'arrival' | 'practice' | 'close'}
             phases={event.phases}
             elapsedSeconds={elapsedSeconds}
+            isEventStarted={elapsedSeconds >= 0}
           />
         )}
 
@@ -260,6 +293,85 @@ export default function EventPage() {
           </Card>
         )}
 
+        {/* Batch Selection */}
+        {currentPhase !== 'ended' && !selectedBatch && (
+           <Card className="mb-6">
+             <h3 className="text-xl font-semibold mb-4 text-[var(--text-primary)]">Join a Batch</h3>
+             
+             {elapsedSeconds < 0 ? (
+               <div className="text-center py-8 bg-[var(--surface-subtle)] rounded-[var(--radius-interactive)] border border-dashed border-[var(--text-muted)]">
+                 <p className="text-[var(--text-secondary)] mb-2 font-medium">Event hasn't started yet</p>
+                 <p className="text-sm text-[var(--text-muted)] max-w-md mx-auto">
+                   Batches will open for joining when the event begins. <br/>
+                   <span className="italic">Groups are limited to {event.maxPerBatch} people to ensure meaningful practice.</span>
+                 </p>
+               </div>
+             ) : (
+               <>
+                 <p className="text-[var(--text-secondary)] mb-6">
+                   Select a batch to join the conversation.
+                 </p>
+                 <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4">
+                    {batches.map((batch) => (
+                      <button
+                        key={batch.batchNumber}
+                        onClick={() => handleJoinBatch(batch.batchNumber)}
+                        disabled={isJoining || (batch.participants.length >= event.maxPerBatch && !(batches.every(b => b.participants.length >= event.maxPerBatch) && batch.participants.length <= 5))} 
+                        /* 
+                          Logic for disabling: 
+                          Generally disabled if full. 
+                          Exception (Overflow Rule): If ALL batches are full, and this batch has <= 5 people (contradiction? No, wait).
+                          The rule is: "If a batch would have 5 or less people AND all others batches are full, temporarily allow those 5 or less people to join any other batch"
+                          This means if I am the 22nd person, and I would be in a new batch alone... 
+                          Actually, the rule says "allow those 5 or less people to join ANY OTHER batch".
+                          So if I am in a 'overflow' state?
+                          Let's stick to the visual representation first.
+                        */
+                        className={`
+                          p-4 rounded-[var(--radius-interactive)] border transition-all text-left
+                          ${batch.participants.length >= event.maxPerBatch
+                            ? 'bg-gray-100 border-gray-200 cursor-not-allowed opacity-60'
+                            : 'bg-white border-[var(--surface-emphasis)] hover:border-[var(--primary)] hover:shadow-md'
+                          }
+                        `}
+                      >
+                        <div className="font-semibold text-lg mb-1">Batch {batch.batchNumber}</div>
+                        <div className="text-sm text-[var(--text-secondary)]">
+                          {batch.participants.length} / {event.maxPerBatch} participants
+                        </div>
+                      </button>
+                    ))}
+                    
+                    {/* 
+                      Automatic Batch Creation UI:
+                      If the last batch is full (or if there are no batches), show the next available batch option.
+                    */}
+                    {(batches.length === 0 || batches[batches.length - 1].participants.length >= event.maxPerBatch) && (
+                      <button
+                      onClick={() => handleJoinBatch(batches.length + 1)}
+                      disabled={isJoining}
+                      className="p-4 rounded-[var(--radius-interactive)] border border-dashed border-[var(--text-muted)] text-[var(--text-secondary)] hover:border-[var(--primary)] hover:text-[var(--primary)] hover:bg-[var(--surface-subtle)] transition-all flex items-center justify-center flex-col"
+                    >
+                      <span className="font-medium">
+                        {batches.length === 0 ? 'Start Batch 1' : `Start Batch ${batches.length + 1}`}
+                      </span>
+                    </button>
+                    )}
+                  </div>
+                  <div className="mt-4 flex items-start gap-2 text-sm text-[var(--text-muted)] bg-[var(--surface-subtle)] p-3 rounded-[var(--radius-interactive)]">
+                    <span className="text-lg">ℹ️</span>
+                    <p>
+                      Batches are limited to {event.maxPerBatch} participants. 
+                      <span className="block mt-1 italic">
+                        Special Rule: If a new batch would have 5 or less people and all other batches are full, you may be allowed to join full batches to avoid isolation.
+                      </span>
+                    </p>
+                  </div>
+               </>
+             )}
+           </Card>
+        )}
+
         {/* Batch Info */}
         {selectedBatch && currentPhase !== 'ended' && (
           <Card className="mb-6">
@@ -269,8 +381,8 @@ export default function EventPage() {
           </Card>
         )}
 
-        {/* Chat Panel - Hidden during practice */}
-        {selectedBatch && currentPhase === 'arrival' && (
+        {/* Chat Panel - Hidden during practice, and only if batch selected */}
+        {selectedBatch && elapsedSeconds >= 0 && currentPhase === 'arrival' && (
           <ChatPanel
             eventId={eventId}
             batchNumber={selectedBatch}
