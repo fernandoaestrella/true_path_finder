@@ -8,14 +8,6 @@ import { Method, Review } from '@/types';
 import { collection, getDocs, addDoc, doc, getDoc, serverTimestamp, updateDoc, query, where, orderBy } from 'firebase/firestore';
 import { db } from '@/src/lib/firebase/config';
 
-// Required for static export with dynamic routes
-export const dynamicParams = true;
-
-export async function generateStaticParams() {
-  // Return empty array - pages will be generated on-demand
-  return [];
-}
-
 type PageParams = Promise<{ methodId: string }>;
 
 export default function MethodDetailPage({ params }: { params: PageParams }) {

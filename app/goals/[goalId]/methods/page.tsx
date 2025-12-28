@@ -8,14 +8,6 @@ import { Method, Goal, Resource, SuggestedMinimum } from '@/types';
 import { collection, getDocs, addDoc, setDoc, deleteDoc, doc, getDoc, serverTimestamp, updateDoc, increment } from 'firebase/firestore';
 import { db } from '@/src/lib/firebase/config';
 
-// Required for static export with dynamic routes
-export const dynamicParams = true;
-
-export async function generateStaticParams() {
-  // Return empty array - pages will be generated on-demand
-  return [];
-}
-
 type PageParams = Promise<{ goalId: string }>;
 
 export default function MethodsPage({ params }: { params: PageParams }) {

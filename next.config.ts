@@ -1,11 +1,8 @@
 import type { NextConfig } from "next";
 
 const nextConfig: NextConfig = {
-  output: 'export',  // Generate static files in 'out' directory
-  trailingSlash: true,  // Better compatibility with Firebase Hosting
-  images: {
-    unoptimized: true,  // Required for static export
-  },
+  // Standard Next.js config for Vercel
+  // Firebase backend (Auth, Firestore, Realtime DB) works perfectly
 };
 
 export default nextConfig;

@@ -1,0 +1,6 @@
+# Vercel
+.vercel
+
+# Firebase (keep these)
+.firebase
+firebase-debug*.log

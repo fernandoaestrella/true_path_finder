@@ -30,7 +30,9 @@
       "firebase.json",
       "**/.*",
       "**/node_modules/**"
-    ]
+    ],
+    "cleanUrls": true,
+    "trailingSlash": false
   },
   "database": {
     "rules": "firebase/database.rules.json"
