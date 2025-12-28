@@ -1,0 +1,193 @@
+## Original Idea
+
+App to achieve any goal by finding the best method to achieve it through user reviews and by community building
+
+Pages:
+
+- Landing Page summarizing everything to make it clear if this will be useful for you  
+- Home page after you log in, shows the methods you have chosen to try, grouped by goal. For each method, you can: open a link from the method resources, review it, see a reminder of how much time before the next group event in the form “next event in X days, Y hours”, or go to the corresponding community. If no method is chosen so far, you’re invited to go to the “Choose Goal” page.  
+- “Choose Goal” Page. You can either view existing goals, choose an existing goal or create one yourself. When creating a goal, you have the option to choose it.  
+- “Choose Method” Page for each goal. You can either view methods, choose a method or add one yourself. You can sort all methods for that goal by: review score, number of people trying it, or any other criteria. When adding a method, you have the option to choose it.  
+- Method Page: you can access: resources (like links and descriptions), reviews, community  
+- Reviews: you can sort reviews by their score, or by any other criteria. On any review you can see all available criteria on each.  
+- Community: (ok this can get messy fast with moderation and whatnot but it should either be aimed at or one should guide users to other more established communities) you can group chat, join voice lounge, and plan events together. On the top you can see how many are online now out of how many total people have currently selected that method ( “13 / 45 online now”), and a reminder of when the next group event will happen (“next event on March 6, 5pm. In 2 hours 23 minutes”), and a button to join that group event. There’s also a menu button to see more details of the group chat.
+
+Method:
+
+- Procedure:  
+1. Initially, there are no goals.   
+2. Then, users post goals they want to achieve.   
+3. Initially, there are no methods to achieve any goal.   
+4. Then, users post methods to achieve each goal under the corresponding goal. The poster of a method can add a link to a source that describes the method and/or the minimum condition for providing a valid review, so there would be several links (grouped as “resources”) and each link can have a field called “title” where the user describes what the link is for. Each method has a suggested length of time to be tried, number of hours, or number of attempts before emitting an initial review. The creator of the post describes this suggested minimum condition. If a post creator gave a wrong minimum duration, they are encouraged to create a new method to give the correct minimum duration.  
+5. Users select one or more goals they want to achieve.   
+6. Users then select one or more methods to achieve any of those goals. Users can select more than one goal and method to attempt.  
+7. The user can then see those goals and methods in the first screen that comes up every time they open the app, along with any tool, text or link that would help them achieve it. All methods being attempted would be grouped by the goal they help achieve and would be displayed in lines of variable height so that if you have many methods you are trying, up until a maximum of 5, each of them appear in an individual line that maximally fills the vertical space, and they can be attempted out of the order in which they are listed. Every time they are tried, the information regarding that try is recorded.  
+8. Users try the method/s and evaluate the results, ideally after the suggested minimum condition has been met. They post a review describing their evaluation. The reviews contains a summary of the attempts they have recorded in the app (like how many times it has been attempted or for how long)  
+9. Methods can be reviewed multiple times as the user’s experience of the method grows, and when being displayed, a given user’s reviews of a given method are listed one next to the other and in inverse chronological order (latest first).  
+10. Users give their reviews of this method so others are naturally, but not explicitly (this is very important\!), encouraged to try the methods with the best reviews.   
+11. The group may end up finding the best solutions. Absolutely any method is allowed, and the group may naturally find ways to discourage certain methods. No method should be hidden. A method would hopefully just receive discouraging evaluations if it doesn’t lead to truth.  
+12. Users may mark a method as “tested” to archive them in a section of tested methods so they don’t show in the initial screen that helps users try the currently attempted methods.  
+13. Users share a link to any data externally so others can jump in and interact by either discussing, posting goals, posting methods, giving reviews, etc,  
+- A new area of focus is only posted if someone can’t verbally equate their intention with an existing area of focus/goal.  
+- When you first open it every day (after the onboarding), you are asked what you want to do today. You are forced to remember what you want to do either by remembering or by selecting it from a list of previously selected methods.  
+- Everyday you can’t browse the app for more than 21 minutes. Time restarts at 3:20 am your local time. The ticking time can be seen on the top and center of the app all the time after choosing what you chose to do today. It pauses if you don’t have the window active and resumes after you reactivate it.  
+- The onboarding process happens once, obligatorily, when creating the account, and through a few screens, images and text, explains the whole motivation and methodology.  
+- There will be a General group where the whole world will pitch in and have their own set of Goals, Methods and Reviews. But the app should also allow you to have a Group demarcation in which you may have the same goals, but only people in the group can start goals, methods and reviews. This is because people value a review much more from a person they know and trust.  
+- Events are the only moments when you can use the app that won’t count against your allotted usage time. Events always have 3 parts: Arrival/warm up/introduction, practice, and close/reflection/regards. Open event chats must only be open during the beginning and ending phases, never in the middle one. Events are the only moments the community can freely talk to each other. Events are scheduled by anyone trying a Method. Events have a duration, description, link/s, etc  
+- Events may have no more than 21 participants in them, but multiple batches/rooms can happen at the same time. Batches should have numbers in their names so people can join the same one again next time. If a batch would have 5 or less people AND all others batches are full, temporarily allow those 5 or less people to join any other batch
+
+Observations:
+
+- It’s ok if people post an area of focus that seems similar to an existing one. This is the nature of language: it’s ambiguous. The most important goal is to make progress. More people will approach a certain way of describing it, and may benefit from solutions there. A few others will actually benefit from a different way of defining the same situation or a similar one. So they will focus on it as an apparently separate area of focus and find solutions there. Now, the interesting observation is that some might actually benefit from seeing their situation in these different ways, but hadn’t considered it. So a solution could be to link certain goals with “related” goals so people stay open to finding the exact method that will work for them, independently of the way the goal is framed/worded (i.e.: meditate vs. meditate for 5 min every day vs. get initiated into X practice\].
+
+Motivation:
+
+- This would allow people to genuinely find truth by themselves. When using this system, users are not distracted by prejudices they may have regarding where a method came from. Even though someone may suggest a method that was originally from a tradition, philosophy, body of work, experiment, culture, religion, etc., the method is simply presented as the essence what it is: a standalone method to reach the goal you chose to reach, instead of one part of many others that you must ascribe by to reach the goal someone else tells you you should reach. That is, the prejudice may come from the fact that someone is offering you more than what you need, e.g. “join my culture, do all these things, and then you will get this goal”, and from the fact that someone is offering you to reach a goal that you haven’t chosen yourself that you want to reach, e.g. if someone offers you a method to feel the whole universe as part of you, you may not be sure if you want it when all you want right now is not to feel angry with someone.  
+- Every content, digital or not, ever created can be more generally thought of as an answer to the question “how to be happy”. We all want to be happy. Why are we not using anything we consume (e.g. social media) to be happy? Because sometimes we consume it with no goal. If we put the goal first and derive everything from there, we will be happier.
+
+Areas I need more detail on:
+
+- How to determine what are more trustworthy reviews  
+- Lifecycle of the practice for maximum consistence, reflection, and trustworthiness in review  
+- Lifecycle of the method to ensure guidance to try it is really valuable (i.e. showing that x amount of people are trying it is shallow, if you could see how many people have been practicing it for a long time because it works, it would be better, or if someone outgrew it successfully because they found a better one, that’s also interesting)  
+- Displaying data in a visual/diagram that facilitates analyzing, as opposed to needing a lot of reading  
+- How to curb dangerous methods
+
+## Refined Idea:
+
+## True Path Finder \- Goal Achievement Through Community Wisdom
+
+### Core Philosophy
+
+A minimal, calm app where users discover what works by trying methods and sharing honest reviews. The 21-minute daily limit keeps focus on doing, not browsing. Community interaction only happens during structured events to protect users and maintain quality.  
+---
+
+### User Flow
+
+1\. Philosophy Experience (Landing \+ Onboarding merged)
+
+* Single, seamless flow for new visitors  
+* 4-5 calm screens explaining:  
+  * Why we're all seeking happiness  
+  * How goals → methods → reviews work  
+  * Why the 21-minute limit exists  
+  * The community philosophy (events-only interaction)  
+* At the end: email account creation  
+* Final step: timezone selection (for 3:20 AM reset)
+
+2\. Daily Intention Screen (Every app open)
+
+* "What are you working toward today?"  
+* Shows ALL your chosen goals  
+* User must acknowledge/confirm each one  
+* Creates a mindfulness moment before entering  
+* Cannot be skipped
+
+3\. Home Dashboard
+
+* Timer bar at top center (21:00 countdown)  
+  * Info icon (ⓘ) with tooltip explaining:  
+    * Pauses when window inactive  
+    * Resets at 3:20 AM local time  
+    * Events don't count against limit  
+* Methods grouped by goal (up to 5 in adaptive layout)  
+* Each method card shows:  
+  * Quick access to resources/links  
+  * "Write Review" button  
+  * Next event countdown ("In 3 days, 2 hours")  
+  * (No community link — interaction only via events)  
+* If no methods chosen: prompt to "Choose a Goal"
+
+4\. Choose Goal Page
+
+* Browse existing goals (search/filter)  
+* Create new goal with description  
+* Choose goal when viewing or creating  
+* Placeholder: "Related Goals" section (coming soon) — only visible when inside a specific goal
+
+5\. Choose Method Page (per Goal)
+
+* Browse methods sorted by:  
+  * Weighted review score  
+  * People currently trying it  
+  * Verified completions  
+* Each method shows: rating, active practitioners, suggested duration  
+* Add new method with:  
+  * Title, description  
+  * Resources (multiple links with titles)  
+  * Suggested minimum before reviewing  
+* Placeholder: Flag button (visual indicator, inactive)
+
+6\. Method Detail Page
+
+* Tabs: Resources | Reviews | Events  
+* Resources: Links with descriptions  
+* Reviews:  
+  * Sortable by score, date, verified status  
+  * Shows: overall score, duration tried, custom criteria, whether minimum was met  
+  * Same user's reviews shown chronologically (latest first)  
+* Events:  
+  * Upcoming events list  
+  * Online presence counter ("13/45 currently trying this method")  
+  * "Create Event" button
+
+7\. Events System (Core Community Feature)
+
+* Create Event screen:  
+  * Title, description, external links  
+  * Three phases with info tooltips explaining each:  
+    * Arrival/Warm-up — introductions, chat open  
+    * Practice — focused work, chat closed  
+    * Close/Reflection — sharing, chat open  
+  * Duration for EACH phase individually (seconds → years)  
+  * Max 21 participants per batch  
+* During Event:  
+  * Batches auto-open during Arrival phase only  
+  * Users choose their batch (no forced assignment)  
+  * Batch numbers allow returning to same group  
+  * If a batch would have ≤5 people AND others are full, allow joining other batches  
+  * Chat only active during Arrival and Close phases  
+  * Event time exempt from 21-minute limit
+
+8\. Groups
+
+* General group: Global, everyone can participate  
+* Private groups: Invite-only, same structure (goals/methods/reviews/events)  
+* Group selector in navigation
+
+9\. Settings & Profile
+
+* View "tested" (archived) methods  
+* Manage groups  
+* Account settings
+
+---
+
+### Visual Design
+
+* Minimal & calm aesthetic  
+* Muted, peaceful color palette (soft blues, greens, warm grays)  
+* Generous whitespace  
+* Subtle, purposeful animations  
+* Timer prominent but not anxiety-inducing  
+* "Coming soon" features clearly styled differently (muted colors, italic text)
+
+---
+
+### Backend
+
+* Email authentication  
+* User profiles with timezone  
+* Goals, methods, reviews tables  
+* Events with phase durations and batch management  
+* Groups with membership  
+* Real-time presence for events  
+* Daily session tracking (21-minute enforcement)
+
+---
+
+### Placeholders (Visually Distinct "Coming Soon")
+
+* Related goals linking (visible only within goal screens)  
+* Flagging system (button visible, inactive)  
+* Advanced review criteria customization
