@@ -2,7 +2,7 @@
 
 import React, { useState, useEffect, use, Suspense } from 'react';
 import { useSearchParams } from 'next/navigation';
-import { Button, Textarea, Card, CardHeader, CardTitle, CardContent, Header } from '@/components';
+import { Button, Textarea, Card, CardHeader, CardTitle, CardContent, Header, ResourceCard } from '@/components';
 import { useAuth } from '@/lib/contexts/AuthContext';
 import { Method, Review, TPFEvent } from '@/types';
 import { collection, getDocs, addDoc, doc, getDoc, serverTimestamp, updateDoc, query, where, orderBy, setDoc, deleteDoc, increment } from 'firebase/firestore';
@@ -333,25 +333,11 @@ function MethodDetailContent({ params }: { params: PageParams }) {
             ) : (
               <div className="space-y-3">
                 {method.resources.map((resource, index) => (
-                  <a
+                  <ResourceCard
                     key={index}
-                    href={resource.url}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="block p-4 bg-[var(--surface-subtle)] rounded-xl hover:bg-[var(--surface-muted)] transition-colors"
-                  >
-                    <div className="flex items-center gap-3">
-                      <span className="text-xl">🔗</span>
-                      <div>
-                        <h4 className="font-medium text-[var(--text-primary)]">
-                          {resource.title || 'Resource'}
-                        </h4>
-                        <p className="text-sm text-[var(--text-muted)] truncate">
-                          {resource.url}
-                        </p>
-                      </div>
-                    </div>
-                  </a>
+                    title={resource.title}
+                    url={resource.url}
+                  />
                 ))}
               </div>
             )}

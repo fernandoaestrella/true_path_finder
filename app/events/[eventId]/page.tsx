@@ -8,7 +8,7 @@ import { useAuth } from '@/lib/contexts/AuthContext';
 import { TPFEvent, EventBatch } from '@/types';
 import PhaseIndicator from '@/components/features/PhaseIndicator';
 import ChatPanel from '@/components/features/ChatPanel';
-import { Button, Card, Header } from '@/components';
+import { Button, Card, Header, ResourceCard } from '@/components';
 import { AddToCalendarButton } from 'add-to-calendar-button-react';
 import { getNextEventOccurrence, getEventDurationSeconds } from '@/lib/utils/eventUtils';
 import { APP_CONFIG } from '@/lib/config';
@@ -40,6 +40,47 @@ const InfoTooltip = ({ content }: { content: string }) => {
         </div>
       )}
     </div>
+  );
+};
+
+const EditButton = ({ eventId, isStarted }: { eventId: string, isStarted: boolean }) => {
+  const router = useRouter();
+  const [showTooltip, setShowTooltip] = useState(false);
+
+  if (isStarted) {
+    return (
+      <div className="relative inline-block">
+        <div
+          onMouseEnter={() => setShowTooltip(true)}
+          onMouseLeave={() => setShowTooltip(false)}
+          onClick={() => setShowTooltip(!showTooltip)}
+          className="inline-block"
+        >
+          <Button 
+            variant="secondary" 
+            disabled={true}
+            className="text-sm px-3 py-1 h-8 opacity-50 cursor-not-allowed pointer-events-none" // pointer-events-none on button, so wrapper catches events
+          >
+            Edit
+          </Button>
+        </div>
+        {showTooltip && (
+          <div className="absolute right-0 top-full mt-2 w-48 p-2 bg-[var(--text-primary)] text-white text-xs rounded-[var(--radius-interactive)] shadow-lg z-20 text-center">
+            Cannot edit an event that is currently live.
+          </div>
+        )}
+      </div>
+    );
+  }
+
+  return (
+    <Button 
+      variant="secondary" 
+      onClick={() => router.push(`/events/edit/${eventId}`)}
+      className="text-sm px-3 py-1 h-8"
+    >
+      Edit
+    </Button>
   );
 };
 
@@ -332,13 +373,7 @@ export default function EventPage() {
              
              {isCreator && (
                <div className="flex gap-2">
-                 <Button 
-                   variant="secondary" 
-                   onClick={() => router.push(`/events/edit/${eventId}`)}
-                   className="text-sm px-3 py-1 h-8"
-                 >
-                   Edit
-                 </Button>
+                   <EditButton eventId={eventId} isStarted={elapsedSeconds >= 0} />
                  <Button 
                    variant="secondary" 
                    onClick={handleDeleteEvent}
@@ -401,17 +436,13 @@ export default function EventPage() {
         {event.links.length > 0 && (
           <Card className="mb-6">
             <h3 className="text-lg font-semibold text-[var(--text-primary)] mb-3">Event Resources</h3>
-            <div className="space-y-2">
+            <div className="space-y-3">
               {event.links.map((link, index) => (
-                <a
+                <ResourceCard 
                   key={index}
-                  href={link.url}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="block text-[var(--primary)] hover:underline cursor-pointer"
-                >
-                  {link.title}
-                </a>
+                  title={link.title}
+                  url={link.url}
+                />
               ))}
             </div>
           </Card>
@@ -460,7 +491,7 @@ export default function EventPage() {
                           p-4 rounded-[var(--radius-interactive)] transition-all text-left shadow-sm
                           ${batch.participants.length >= event.maxPerBatch
                             ? 'bg-gray-100 cursor-not-allowed opacity-60'
-                            : 'bg-white hover:shadow-md hover:bg-[var(--surface-subtle)]'
+                            : 'bg-white hover:shadow-md'
                           }
                         `}
                       >
@@ -475,7 +506,7 @@ export default function EventPage() {
                       <button
                       onClick={() => handleJoinBatch(batches.length + 1)}
                       disabled={isJoining}
-                      className="p-4 rounded-[var(--radius-interactive)] bg-[var(--surface-subtle)] text-[var(--text-secondary)] hover:text-[var(--primary)] hover:bg-[var(--surface-muted)] transition-all flex items-center justify-center flex-col shadow-sm"
+                      className="p-4 rounded-[var(--radius-interactive)] bg-[var(--surface-subtle)] text-[var(--text-secondary)] hover:text-[var(--primary)] transition-all flex items-center justify-center flex-col shadow-sm"
                     >
                       <span className="font-medium">
                         {batches.length === 0 ? 'Join Batch 1' : `Join Batch ${batches.length + 1}`}

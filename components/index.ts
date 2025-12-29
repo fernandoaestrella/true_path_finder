@@ -12,3 +12,4 @@ export { Header } from './layout/Header';
 export { default as PhaseIndicator } from './features/PhaseIndicator';
 export { default as ChatPanel } from './features/ChatPanel';
 export { default as EventCard } from './features/EventCard';
+export { ResourceCard } from './features/ResourceCard';
