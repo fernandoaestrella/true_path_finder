@@ -11,11 +11,36 @@ import ChatPanel from '@/components/features/ChatPanel';
 import { Button, Card, Header } from '@/components';
 import { AddToCalendarButton } from 'add-to-calendar-button-react';
 import { getNextEventOccurrence, getEventDurationSeconds } from '@/lib/utils/eventUtils';
+import { APP_CONFIG } from '@/lib/config';
 
 const getOrdinal = (n: number) => {
   const s = ["th", "st", "nd", "rd"];
   const v = n % 100;
   return n + (s[(v - 20) % 10] || s[v] || s[0]);
+};
+
+const InfoTooltip = ({ content }: { content: string }) => {
+  const [showTooltip, setShowTooltip] = useState(false);
+  
+  return (
+    <div className="relative inline-block ml-2 align-middle">
+      <button
+        type="button"
+        onMouseEnter={() => setShowTooltip(true)}
+        onMouseLeave={() => setShowTooltip(false)}
+        onClick={() => setShowTooltip(!showTooltip)}
+        className="w-5 h-5 rounded-full bg-[var(--primary)] text-white text-sm flex items-center justify-center cursor-help hover:bg-[var(--primary-dark)] transition-colors"
+        aria-label="More information"
+      >
+        i
+      </button>
+      {showTooltip && (
+        <div className="absolute left-1/2 -translate-x-1/2 bottom-full mb-2 w-64 p-3 bg-[var(--text-primary)] text-white text-sm rounded-[var(--radius-interactive)] shadow-lg z-10 text-left normal-case font-normal">
+          {content}
+        </div>
+      )}
+    </div>
+  );
 };
 
 type Phase = 'arrival' | 'practice' | 'close' | 'ended';
@@ -35,6 +60,8 @@ export default function EventPage() {
   const [elapsedSeconds, setElapsedSeconds] = useState(0);
   const [isLoading, setIsLoading] = useState(true);
   const [isJoining, setIsJoining] = useState(false);
+  const [isRsvped, setIsRsvped] = useState(false);
+  const [isLoadingRsvp, setIsLoadingRsvp] = useState(false);
 
   // Load event data
   useEffect(() => {
@@ -206,11 +233,51 @@ export default function EventPage() {
     if (batches.length === 0) return 1;
     
     // Find first batch with space
-    const availableBatch = batches.find((b) => b.participants.length < (event?.maxPerBatch || 21));
+    const availableBatch = batches.find((b) => b.participants.length < (event?.maxPerBatch || APP_CONFIG.MAX_PARTICIPANTS_PER_BATCH));
     if (availableBatch) return availableBatch.batchNumber;
     
     // All batches full, create new one
     return Math.max(...batches.map((b) => b.batchNumber)) + 1;
+  };
+
+  // Check RSVP status
+  useEffect(() => {
+    if (!user || !eventId) return;
+    const checkRsvp = async () => {
+      try {
+        const rsvpDoc = await getDoc(doc(db, 'users', user.uid, 'rsvps', eventId));
+        setIsRsvped(rsvpDoc.exists());
+      } catch (err) {
+        console.error('Error checking RSVP:', err);
+      }
+    };
+    checkRsvp();
+  }, [user, eventId]);
+
+  const handleRsvp = async () => {
+    if (!user || !event) return;
+    setIsLoadingRsvp(true);
+    try {
+      const rsvpRef = doc(db, 'users', user.uid, 'rsvps', eventId);
+      if (isRsvped) {
+        await deleteDoc(rsvpRef);
+        setIsRsvped(false);
+      } else {
+        const nextOccurrence = getNextEventOccurrence(event);
+        if (nextOccurrence) {
+            await setDoc(rsvpRef, {
+              eventId: event.id,
+              addedAt: new Date(),
+              nextOccurrence: nextOccurrence
+            });
+            setIsRsvped(true);
+        }
+      }
+    } catch (err) {
+      console.error('Error toggling RSVP:', err);
+    } finally {
+      setIsLoadingRsvp(false);
+    }
   };
 
   // Auto-join removed in favor of manual batch selection
@@ -275,7 +342,7 @@ export default function EventPage() {
                  <Button 
                    variant="secondary" 
                    onClick={handleDeleteEvent}
-                   className="text-sm px-3 py-1 h-8 text-red-600 hover:text-red-700 hover:bg-red-50 border-red-200"
+                   className="text-sm px-3 py-1 h-8 text-red-600 hover:text-red-700 hover:bg-red-50"
                  >
                    Delete
                  </Button>
@@ -303,18 +370,28 @@ export default function EventPage() {
                </div>
                
                {event && getNextEventOccurrence(event) && (
-                 <AddToCalendarButton
-                   name={event.title}
-                   description={`${event.description}\n\nFrom True Path Finder ${typeof window !== 'undefined' ? window.location.origin : ''}`}
-                   options={['Google', 'Apple', 'Outlook.com']}
-                   location={`${typeof window !== 'undefined' ? window.location.origin : ''}/events/${event.id}`}
-                   startDate={getNextEventOccurrence(event)!.toISOString().split('T')[0]}
-                   endDate={getNextEventOccurrence(event)!.toISOString().split('T')[0]}
-                   startTime={getNextEventOccurrence(event)!.toTimeString().slice(0, 5)}
-                   endTime={new Date(getNextEventOccurrence(event)!.getTime() + getEventDurationSeconds(event) * 1000).toTimeString().slice(0, 5)}
-                   timeZone="currentBrowser"
-                   buttonStyle="round"
-                 />
+                 <div className="flex flex-col sm:flex-row gap-4 items-center">
+                   <Button
+                      onClick={handleRsvp}
+                      variant="secondary"
+                      className={`min-w-[140px] ${isRsvped ? 'bg-green-100 text-green-700 hover:bg-green-200' : ''}`}
+                      disabled={isLoadingRsvp}
+                    >
+                      {isLoadingRsvp ? 'Updating...' : (isRsvped ? '✓ Signed Up' : '+ Sign Up')}
+                    </Button>
+                   <AddToCalendarButton
+                     name={event.title}
+                     description={`${event.description}\n\nFrom True Path Finder ${typeof window !== 'undefined' ? window.location.origin : ''}`}
+                     options={['Google', 'Apple', 'Outlook.com']}
+                     location={`${typeof window !== 'undefined' ? window.location.origin : ''}/events/${event.id}`}
+                     startDate={getNextEventOccurrence(event)!.toISOString().split('T')[0]}
+                     endDate={getNextEventOccurrence(event)!.toISOString().split('T')[0]}
+                     startTime={getNextEventOccurrence(event)!.toTimeString().slice(0, 5)}
+                     endTime={new Date(getNextEventOccurrence(event)!.getTime() + getEventDurationSeconds(event) * 1000).toTimeString().slice(0, 5)}
+                     timeZone="currentBrowser"
+                     buttonStyle="round"
+                   />
+                 </div>
                )}
             </div>
           )}
@@ -353,20 +430,23 @@ export default function EventPage() {
 
 
         {/* Batch Selection */}
-        {currentPhase !== 'ended' && !selectedBatch && (
+        {currentPhase !== 'ended' && (!selectedBatch || elapsedSeconds < 0) && (
            <Card className="mb-6">
-             <h3 className="text-xl font-semibold mb-4 text-[var(--text-primary)]">Join a Batch</h3>
-             
              {elapsedSeconds < 0 ? (
-               <div className="text-center py-8 bg-[var(--surface-subtle)] rounded-[var(--radius-interactive)] border border-dashed border-[var(--text-muted)]">
-                 <p className="text-[var(--text-secondary)] mb-2 font-medium">Event hasn't started yet</p>
-                 <p className="text-sm text-[var(--text-muted)] max-w-md mx-auto">
-                   Batches will open for joining when the event begins. <br/>
-                   <span className="italic">Groups are limited to {event.maxPerBatch} people to ensure meaningful practice.</span>
-                 </p>
-               </div>
+               <>
+                 <div className="flex items-center mb-4">
+                    <h3 className="text-xl font-semibold text-[var(--text-primary)]">Batch Selection</h3>
+                    <InfoTooltip content={`Batches are limited to ${event.maxPerBatch} participants. Special Rule: If a new batch would have ${APP_CONFIG.BATCH_OVERFLOW_THRESHOLD} or less people and all other batches are full, you may be allowed to join full batches to avoid isolation.`} />
+                 </div>
+                 <div className="text-center py-8 bg-[var(--surface-subtle)] rounded-[var(--radius-interactive)]">
+                   <p className="text-[var(--text-secondary)] font-medium">
+                     Batches will open for joining when the event starts.
+                   </p>
+                 </div>
+               </>
              ) : (
                <>
+                 <h3 className="text-xl font-semibold mb-4 text-[var(--text-primary)]">Join a Batch</h3>
                  <p className="text-[var(--text-secondary)] mb-6">
                    Select a batch to join the conversation.
                  </p>
@@ -375,22 +455,12 @@ export default function EventPage() {
                       <button
                         key={batch.batchNumber}
                         onClick={() => handleJoinBatch(batch.batchNumber)}
-                        disabled={isJoining || (batch.participants.length >= event.maxPerBatch && !(batches.every(b => b.participants.length >= event.maxPerBatch) && batch.participants.length <= 5))} 
-                        /* 
-                          Logic for disabling: 
-                          Generally disabled if full. 
-                          Exception (Overflow Rule): If ALL batches are full, and this batch has <= 5 people (contradiction? No, wait).
-                          The rule is: "If a batch would have 5 or less people AND all others batches are full, temporarily allow those 5 or less people to join any other batch"
-                          This means if I am the 22nd person, and I would be in a new batch alone... 
-                          Actually, the rule says "allow those 5 or less people to join ANY OTHER batch".
-                          So if I am in a 'overflow' state?
-                          Let's stick to the visual representation first.
-                        */
+                        disabled={isJoining || (batch.participants.length >= event.maxPerBatch && !(batches.every(b => b.participants.length >= event.maxPerBatch) && batch.participants.length <= APP_CONFIG.BATCH_OVERFLOW_THRESHOLD))} 
                         className={`
-                          p-4 rounded-[var(--radius-interactive)] border transition-all text-left
+                          p-4 rounded-[var(--radius-interactive)] transition-all text-left shadow-sm
                           ${batch.participants.length >= event.maxPerBatch
-                            ? 'bg-gray-100 border-gray-200 cursor-not-allowed opacity-60'
-                            : 'bg-white border-[var(--surface-emphasis)] hover:border-[var(--primary)] hover:shadow-md'
+                            ? 'bg-gray-100 cursor-not-allowed opacity-60'
+                            : 'bg-white hover:shadow-md hover:bg-[var(--surface-subtle)]'
                           }
                         `}
                       >
@@ -401,15 +471,11 @@ export default function EventPage() {
                       </button>
                     ))}
                     
-                    {/* 
-                      Automatic Batch Creation UI:
-                      If the last batch is full (or if there are no batches), show the next available batch option.
-                    */}
                     {(batches.length === 0 || batches[batches.length - 1].participants.length >= event.maxPerBatch) && (
                       <button
                       onClick={() => handleJoinBatch(batches.length + 1)}
                       disabled={isJoining}
-                      className="p-4 rounded-[var(--radius-interactive)] border border-dashed border-[var(--text-muted)] text-[var(--text-secondary)] hover:border-[var(--primary)] hover:text-[var(--primary)] hover:bg-[var(--surface-subtle)] transition-all flex items-center justify-center flex-col"
+                      className="p-4 rounded-[var(--radius-interactive)] bg-[var(--surface-subtle)] text-[var(--text-secondary)] hover:text-[var(--primary)] hover:bg-[var(--surface-muted)] transition-all flex items-center justify-center flex-col shadow-sm"
                     >
                       <span className="font-medium">
                         {batches.length === 0 ? 'Join Batch 1' : `Join Batch ${batches.length + 1}`}
@@ -422,7 +488,7 @@ export default function EventPage() {
                     <p>
                       Batches are limited to {event.maxPerBatch} participants. 
                       <span className="block mt-1 italic">
-                        Special Rule: If a new batch would have 5 or less people and all other batches are full, you may be allowed to join full batches to avoid isolation.
+                        Special Rule: If a new batch would have {APP_CONFIG.BATCH_OVERFLOW_THRESHOLD} or less people and all other batches are full, you may be allowed to join full batches to avoid isolation.
                       </span>
                     </p>
                   </div>
@@ -432,7 +498,7 @@ export default function EventPage() {
         )}
 
         {/* Batch Info */}
-        {selectedBatch && currentPhase !== 'ended' && (
+        {selectedBatch && currentPhase !== 'ended' && elapsedSeconds >= 0 && (
           <Card className="mb-6">
             <p className="text-[var(--text-secondary)]">
               You are in <span className="font-semibold">Batch {selectedBatch}</span>

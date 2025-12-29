@@ -157,21 +157,21 @@ function LimitReachedContent() {
           <p className="text-xs text-[var(--text-muted)]">
             Your timer will reset at 3:20 AM local time.
           </p>
-          <div className="mt-4 pt-4 border-t border-[var(--border)]">
-             <p className="text-sm font-medium text-[var(--primary)]">
-               💡 Note: Scheduled Events are exempt from this limit.
-             </p>
-             <p className="text-xs text-[var(--text-secondary)] mt-1">
-               You can still join community events even if your daily timer is up.
-             </p>
-             
-             {nextEvent && (
-                <div className="mt-4 text-left">
-                  <p className="text-xs font-semibold text-[var(--text-secondary)] uppercase tracking-wider mb-2">Next Scheduled Event</p>
-                  <div 
-                    className="flex items-center justify-between p-3 bg-[var(--background)] rounded-[var(--radius-interactive)] border border-[var(--border)] cursor-pointer hover:border-[var(--primary)] transition-colors"
-                    onClick={() => router.push(`/events/${nextEvent.id}`)}
-                  >
+           <div className="mt-4 pt-4 shadow-[0_-1px_0_var(--surface-emphasis)]">
+              <p className="text-sm font-medium text-[var(--primary)]">
+                💡 Note: Scheduled Events are exempt from this limit.
+              </p>
+              <p className="text-xs text-[var(--text-secondary)] mt-1">
+                You can still join community events even if your daily timer is up.
+              </p>
+              
+              {nextEvent && (
+                 <div className="mt-4 text-left">
+                   <p className="text-xs font-semibold text-[var(--text-secondary)] uppercase tracking-wider mb-2">Next Scheduled Event</p>
+                   <div 
+                     className="flex items-center justify-between p-3 bg-[var(--background)] rounded-[var(--radius-interactive)] cursor-pointer hover:shadow-md transition-shadow"
+                     onClick={() => router.push(`/events/${nextEvent.id}`)}
+                   >
                      <div>
                         <p className="font-medium text-[var(--text-primary)] text-sm">{nextEvent.title}</p>
                         <p className="text-xs text-[var(--text-muted)]">

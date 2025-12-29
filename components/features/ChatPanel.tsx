@@ -6,6 +6,7 @@ import { rtdb } from '@/src/lib/firebase/config';
 import { useAuth } from '@/lib/contexts/AuthContext';
 import { Button } from '@/components/ui/Button';
 import { Input } from '@/components/ui/Input';
+import { useLocalStorage } from '@/lib/hooks/useLocalStorage';
 
 interface ChatMessage {
   id: string;
@@ -24,7 +25,8 @@ interface ChatPanelProps {
 export default function ChatPanel({ eventId, batchNumber, isEnabled }: ChatPanelProps) {
   const { user, userData } = useAuth();
   const [messages, setMessages] = useState<ChatMessage[]>([]);
-  const [newMessage, setNewMessage] = useState('');
+  // Use local storage to persist draft message if user navigates away
+  const [newMessage, setNewMessage, clearNewMessage] = useLocalStorage(`chat_draft_${eventId}_${batchNumber}`, '');
   const [isSending, setIsSending] = useState(false);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const chatPath = `events/${eventId}/batches/${batchNumber}/chat`;
@@ -85,7 +87,7 @@ export default function ChatPanel({ eventId, batchNumber, isEnabled }: ChatPanel
         timestamp: serverTimestamp(),
       });
       
-      setNewMessage('');
+      clearNewMessage();
     } catch (error) {
       console.error('Error sending message:', error);
       alert('Failed to send message');

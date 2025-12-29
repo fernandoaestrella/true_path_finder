@@ -6,7 +6,10 @@ import { collection, addDoc, serverTimestamp } from 'firebase/firestore';
 import { db } from '@/src/lib/firebase/config';
 import { useAuth } from '@/lib/contexts/AuthContext';
 import { Button, Input, Card, Header } from '@/components';
+import { APP_CONFIG } from '@/lib/config';
 import { RepeatabilityConfig } from '@/types';
+import { useLocalStorage } from '@/lib/hooks/useLocalStorage';
+import { useUnsavedChanges } from '@/lib/hooks/useUnsavedChanges';
 
 interface PhaseConfig {
   hours: number;
@@ -115,7 +118,8 @@ function CreateEventContent() {
   // Get methodId from URL
   const methodIdFromUrl = searchParams.get('methodId') || '';
   
-  const [formData, setFormData] = useState<EventFormData>({
+  // Initial state for form
+  const initialFormState: EventFormData = {
     title: '',
     description: '',
     methodId: methodIdFromUrl,
@@ -124,20 +128,36 @@ function CreateEventContent() {
     practice: { hours: 0, minutes: 20, seconds: 0 },
     close: { hours: 0, minutes: 5, seconds: 0 },
     startTime: '',
-    maxPerBatch: 21,
+    maxPerBatch: APP_CONFIG.MAX_PARTICIPANTS_PER_BATCH,
     repeatability: {
       type: 'none',
       interval: 1,
       daysOfWeek: [],
     },
-  });
+  };
+
+  const [formData, setFormData, clearFormData, isLoaded] = useLocalStorage<EventFormData>('create_event_draft', initialFormState);
+
+  // Check if form is dirty for unsaved changes warning
+  // We can consider it dirty if it doesn't match initial empty state (ignoring methodId which comes from URL)
+  // Or simpler: just always warn if there is data in storage?
+  // Let's implement a simple check: if title or description has content.
+  const isDirty = (formData.title !== '' || formData.description !== '');
+  
+  useUnsavedChanges(isDirty);
   
   // Update methodId when URL param changes
   useEffect(() => {
-    if (methodIdFromUrl) {
-      setFormData(prev => ({ ...prev, methodId: methodIdFromUrl }));
+    if (methodIdFromUrl && isLoaded) {
+       // Only update if it's different to avoid loops, and ensure we respect the URL source of truth for ID
+       if (formData.methodId !== methodIdFromUrl) {
+         setFormData(prev => ({ ...prev, methodId: methodIdFromUrl }));
+       }
     }
-  }, [methodIdFromUrl]);
+  }, [methodIdFromUrl, isLoaded, formData.methodId, setFormData]);
+
+  // ... rest of component
+
 
   const calculatePhaseSeconds = (config: PhaseConfig): number => {
     return config.hours * 3600 + config.minutes * 60 + config.seconds;
@@ -193,6 +213,9 @@ function CreateEventContent() {
 
       await addDoc(collection(db, 'events'), eventData);
       
+      // Clear persistence
+      clearFormData();
+
       // Redirect back to method page with events tab
       router.push(`/methods/${formData.methodId}?tab=events`);
     } catch (error) {
@@ -259,7 +282,7 @@ function CreateEventContent() {
             <div className="mb-6">
               <label className="flex items-center text-lg font-medium text-[var(--text-primary)] mb-2">
                 Max Participants per Batch
-                <InfoTooltip content="Batches are limited to 21 participants to ensure meaningful connection. If a new batch would have 6 or fewer people, they will be distributed among other batches even if they are 'full'." />
+                <InfoTooltip content={`Batches are limited to ${APP_CONFIG.MAX_PARTICIPANTS_PER_BATCH} participants to ensure meaningful connection. If a new batch would have ${APP_CONFIG.BATCH_OVERFLOW_THRESHOLD} or fewer people, they will be distributed among other batches even if they are 'full'.`} />
               </label>
               <Input
                  type="number"
@@ -267,7 +290,7 @@ function CreateEventContent() {
                  disabled
                  className="bg-[var(--surface-muted)] text-[var(--text-muted)] cursor-not-allowed"
               />
-              <p className="text-sm text-[var(--text-muted)] mt-1">Fixed at 21 for optimal group dynamics.</p>
+              <p className="text-sm text-[var(--text-muted)] mt-1">Fixed at {APP_CONFIG.MAX_PARTICIPANTS_PER_BATCH} for optimal group dynamics.</p>
             </div>
 
             <div className="mb-6">

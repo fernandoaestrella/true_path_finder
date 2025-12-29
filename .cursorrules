@@ -1,0 +1,15 @@
+# Design Philosophy
+True Path Finder uses a **clean, minimal, focus-first** design.
+- **NO BORDERS**: Do not use `border`, `border-*`, or `divide-*` classes for visual separation. Use background colors (`bg-surface-subtle`, `bg-surface-muted`) and shadows (`shadow-sm`) instead.
+- **Roundness**: Use `rounded-[var(--radius-interactive)]` for cards, buttons, and inputs.
+- **Typography**: No emojis. Use professional, clear text.
+
+# Tech Stack & Rules
+- **Framework**: Next.js 15 (App Router)
+- **Styling**: Tailwind CSS (v4) with CSS variables in `globals.css`.
+- **State**: Firebase Firestore & Auth.
+- **Configuration**: Use `APP_CONFIG` in `@/lib/config` for global constants (e.g., limits).
+
+# Behavior
+- **Context Awareness**: Always check `README.md` or this file for design patterns before generating UI code.
+- **Proactive**: If visuals look "default" or "bootstrap-y", refine them to match the "clean, minimal" aesthetic.
