@@ -92,6 +92,17 @@ export function Header({ currentPage = 'other', timerExtra }: HeaderProps) {
           </div>
           
           <nav className="space-y-2">
+            <a
+              href="/profile"
+              className="w-full flex items-center gap-3 px-4 py-3 rounded-[var(--radius-interactive)] bg-[var(--surface-subtle)] hover:bg-[var(--primary-light)] cursor-pointer transition-colors text-[var(--text-primary)]"
+            >
+              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2" />
+                <circle cx="12" cy="7" r="4" />
+              </svg>
+              <span>Profile</span>
+            </a>
+            
             <button
               onClick={() => {
                 setIsMenuOpen(false);

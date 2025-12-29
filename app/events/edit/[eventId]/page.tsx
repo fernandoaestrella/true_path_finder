@@ -464,7 +464,7 @@ function EditEventContent() {
             
             <PhaseInput
               label="Arrival Phase"
-              tooltip="Time for participants to join, introduce themselves, and prepare. Chat is enabled during this phase."
+              tooltip="Time for participants to join, introduce themselves, and prepare. Text chat is enabled during this phase."
               value={formData.arrival}
               onChange={(arrival) => setFormData({ ...formData, arrival })}
             />
@@ -478,7 +478,7 @@ function EditEventContent() {
 
             <PhaseInput
               label="Close Phase"
-              tooltip="Time to reflect, share experiences, and say goodbye. Chat is enabled again."
+              tooltip="Time to reflect, share experiences, and say goodbye. Text chat is enabled again."
               value={formData.close}
               onChange={(close) => setFormData({ ...formData, close })}
             />

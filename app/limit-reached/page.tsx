@@ -8,7 +8,7 @@ import { Button } from '@/components';
 import { collection, getDocs, doc, getDoc } from 'firebase/firestore';
 import { db } from '@/src/lib/firebase/config';
 import { TPFEvent } from '@/types';
-import { getNextEventOccurrence } from '@/lib/utils/eventUtils';
+import { getNextEventOccurrence, isEventLive } from '@/lib/utils/eventUtils';
 
 function LimitReachedContent() {
   const router = useRouter();
@@ -19,11 +19,14 @@ function LimitReachedContent() {
   const [showPasswordPrompt, setShowPasswordPrompt] = React.useState(false);
   const [password, setPassword] = React.useState('');
   const [nextEvent, setNextEvent] = useState<TPFEvent | null>(null);
+  const [liveEvent, setLiveEvent] = useState<TPFEvent | null>(null);
+  const [isLoadingEvents, setIsLoadingEvents] = useState(false);
   
   useEffect(() => {
     if (!user) return;
     
     const fetchNextEvent = async () => {
+      setIsLoadingEvents(true);
       try {
         const rsvpsRef = collection(db, 'users', user.uid, 'rsvps');
         const rsvpsSnap = await getDocs(rsvpsRef);
@@ -50,8 +53,17 @@ function LimitReachedContent() {
                 }
             }
             
-            // Find closest upcoming event
+            // Check for live events
+            const foundLive = eventsData.find(e => isEventLive(e));
+            if (foundLive) {
+              setLiveEvent(foundLive);
+            } else {
+              setLiveEvent(null);
+            }
+            
+            // Find closest upcoming event (excluding live one)
             const upcomingEvents = eventsData
+                .filter(e => !foundLive || e.id !== foundLive.id)
                 .map(event => ({ event, next: getNextEventOccurrence(event) }))
                 .filter(item => item.next !== null && item.next.getTime() > Date.now())
                 .sort((a, b) => a.next!.getTime() - b.next!.getTime());
@@ -62,6 +74,8 @@ function LimitReachedContent() {
         }
       } catch (err) {
         console.error('Error fetching next event:', err);
+      } finally {
+        setIsLoadingEvents(false);
       }
     };
     
@@ -165,9 +179,35 @@ function LimitReachedContent() {
                 You can still join community events even if your daily timer is up.
               </p>
               
-              {nextEvent && (
-                 <div className="mt-4 text-left">
-                   <p className="text-xs font-semibold text-[var(--text-secondary)] uppercase tracking-wider mb-2">Next Scheduled Event</p>
+               <div className="mt-4 text-left">
+                 {/* Live Event Section */}
+                 {liveEvent && (
+                   <div className="mb-4">
+                     <div className="flex items-center gap-3 mb-2">
+                        <p className="text-xs font-semibold text-[var(--text-secondary)] uppercase tracking-wider">Happening Now</p>
+                        <span className="px-2 py-0.5 bg-red-500 text-white text-[10px] font-bold rounded-full animate-pulse whitespace-nowrap">
+                          LIVE
+                        </span>
+                     </div>
+                     <div 
+                       className="flex items-center justify-between p-3 bg-red-50 border border-red-100 rounded-[var(--radius-interactive)] cursor-pointer hover:shadow-md transition-shadow"
+                       onClick={() => router.push(`/events/${liveEvent.id}`)}
+                     >
+                       <div>
+                          <p className="font-medium text-[var(--text-primary)] text-sm">{liveEvent.title}</p>
+                          <p className="text-xs text-[var(--text-muted)]">
+                             In Progress
+                          </p>
+                       </div>
+                       <span className="text-[var(--primary)] text-sm">Join →</span>
+                    </div>
+                   </div>
+                 )}
+
+                 <p className="text-xs font-semibold text-[var(--text-secondary)] uppercase tracking-wider mb-2">Next Scheduled Event</p>
+                 {isLoadingEvents ? (
+                   <div className="h-16 bg-[var(--surface-muted)] animate-pulse rounded-[var(--radius-interactive)]"></div>
+                 ) : nextEvent ? (
                    <div 
                      className="flex items-center justify-between p-3 bg-[var(--background)] rounded-[var(--radius-interactive)] cursor-pointer hover:shadow-md transition-shadow"
                      onClick={() => router.push(`/events/${nextEvent.id}`)}
@@ -180,8 +220,12 @@ function LimitReachedContent() {
                      </div>
                      <span className="text-[var(--primary)] text-sm">→</span>
                   </div>
-                </div>
-             )}
+                 ) : (
+                   <p className="text-sm text-[var(--text-secondary)] italic">
+                     You aren't signed up to any future events yet.
+                   </p>
+                 )}
+              </div>
           </div>
         </div>
 

@@ -445,21 +445,21 @@ function CreateEventContent() {
             
             <PhaseInput
               label="Arrival Phase"
-              tooltip="Time for participants to join, introduce themselves, and prepare. Chat is enabled during this phase."
+              tooltip="Time for participants to join, introduce themselves, ask questions, and prepare. Text chat is enabled during this phase."
               value={formData.arrival}
               onChange={(arrival) => setFormData({ ...formData, arrival })}
             />
 
             <PhaseInput
               label="Practice Phase"
-              tooltip="Focused practice time. Chat is disabled to minimize distractions and allow deep work."
+              tooltip="Focused practice time. Text chat is disabled to minimize distractions and allow deep work."
               value={formData.practice}
               onChange={(practice) => setFormData({ ...formData, practice })}
             />
 
             <PhaseInput
               label="Close Phase"
-              tooltip="Time to reflect, share experiences, and say goodbye. Chat is enabled again."
+              tooltip="Time to reflect, share experiences, and say goodbye. Text chat is enabled again."
               value={formData.close}
               onChange={(close) => setFormData({ ...formData, close })}
             />

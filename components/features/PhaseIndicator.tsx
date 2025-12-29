@@ -194,12 +194,12 @@ export default function PhaseIndicator({ currentPhase, phases, elapsedSeconds, i
           currentPhase === 'practice' ? (
             <div className="flex items-center justify-center gap-2 text-[var(--text-secondary)]">
               <span className="w-3 h-3 rounded-full bg-[var(--text-muted)]"></span>
-              <span className="font-medium">Chat is disabled during practice</span>
+              <span className="font-medium">Text chat is disabled during practice</span>
             </div>
           ) : (
             <div className="flex items-center justify-center gap-2 text-[var(--primary)]">
               <span className="w-3 h-3 rounded-full bg-[var(--primary)] animate-pulse"></span>
-              <span className="font-medium">Chat is active</span>
+              <span className="font-medium">Text chat is active</span>
             </div>
           )
         ) : (

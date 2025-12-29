@@ -109,7 +109,7 @@ export default function ChatPanel({ eventId, batchNumber, isEnabled }: ChatPanel
             Practice Phase in Progress
           </h3>
           <p className="text-gray-600">
-            Chat is disabled during the practice phase to help everyone focus.
+            Text chat is disabled during the practice phase to help everyone focus.
             <br />
             It will reopen during the closing phase.
           </p>

@@ -34,8 +34,8 @@ export function TimerProvider({ children }: { children: React.ReactNode }) {
     return `tpf_session_${resetTime.toISOString().split('T')[0]}`;
   }, []);
   
-  // Load saved session time
-  useEffect(() => {
+  // Sync state from storage
+  const syncFromStorage = useCallback(() => {
     const sessionKey = getSessionKey();
     const saved = localStorage.getItem(sessionKey);
     
@@ -45,9 +45,17 @@ export function TimerProvider({ children }: { children: React.ReactNode }) {
         setTotalSeconds(parsed);
       }
     } else {
+      // If no saved session, distinct logic probably not needed if we trust defaults,
+      // but strictly following previous logic:
       setTotalSeconds(APP_CONFIG.DAILY_TIME_LIMIT_MINUTES * 60);
     }
+  }, [getSessionKey]);
+
+  // Initial Load
+  useEffect(() => {
+    syncFromStorage();
     
+    const sessionKey = getSessionKey();
     // Clean up old session keys
     const keys = Object.keys(localStorage).filter(k => k.startsWith('tpf_session_'));
     keys.forEach(key => {
@@ -55,7 +63,7 @@ export function TimerProvider({ children }: { children: React.ReactNode }) {
         localStorage.removeItem(key);
       }
     });
-  }, [getSessionKey]);
+  }, [syncFromStorage, getSessionKey]);
   
   // Save session time periodically
   useEffect(() => {
@@ -63,19 +71,35 @@ export function TimerProvider({ children }: { children: React.ReactNode }) {
     localStorage.setItem(sessionKey, totalSeconds.toString());
   }, [totalSeconds, getSessionKey]);
   
-  // Handle visibility changes
+  // Handle visibility changes to re-sync
   useEffect(() => {
     const handleVisibilityChange = () => {
-      setIsPaused(document.hidden);
+      const hidden = document.hidden;
+      setIsPaused(hidden);
+      
+      // If we are coming back to the tab, re-sync from storage to catch up
+      // with any time burned on other tabs
+      if (!hidden) {
+        syncFromStorage();
+      }
+    };
+
+    // Listen for storage changes from other tabs (real-time sync)
+    const handleStorageChange = (e: StorageEvent) => {
+      if (e.key === getSessionKey()) {
+        syncFromStorage();
+      }
     };
     
     document.addEventListener('visibilitychange', handleVisibilityChange);
+    window.addEventListener('storage', handleStorageChange);
     setIsPaused(document.hidden);
     
     return () => {
       document.removeEventListener('visibilitychange', handleVisibilityChange);
+      window.removeEventListener('storage', handleStorageChange);
     };
-  }, []);
+  }, [syncFromStorage, getSessionKey]);
   
   // Check path for exemptions
   const pathname = usePathname();

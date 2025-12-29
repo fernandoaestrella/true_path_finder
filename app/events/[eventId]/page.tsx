@@ -549,7 +549,7 @@ export default function EventPage() {
         {selectedBatch && currentPhase === 'practice' && (
           <InfoCard className="mb-6 text-center py-8">
             <p className="text-[var(--text-secondary)]">
-              Chat is disabled during practice. Focus on your work.
+              Text chat is disabled during practice. Focus on your work.
             </p>
           </InfoCard>
         )}
