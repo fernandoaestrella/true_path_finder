@@ -6,20 +6,36 @@ import { Method, Goal } from '@/types';
 
 interface MethodsByGoal {
   goal: Goal;
-  methods: Method[];
+  methods: (Method & { shortcutResourceId?: string })[];
 }
 
 import Link from 'next/link';
 
 interface MethodCardProps {
-  method: Method;
+  method: Method & { shortcutResourceId?: string };
   goalTitle: string;
   onWriteReview: (methodId: string) => void;
   onViewResources: (methodId: string) => void;
 }
 
 function MethodCard({ method, onWriteReview, onViewResources }: MethodCardProps) {
-  // ... inside MethodCard ...
+  // Determine shortcut
+  let shortcutResource = null;
+  if (method.resources && method.resources.length > 0) {
+    if (method.shortcutResourceId) {
+      // Check for ID match only
+      shortcutResource = method.resources.find(r => r.id === method.shortcutResourceId);
+    }
+    // Default to first if specific shortcut not found or not set
+    if (!shortcutResource) {
+      shortcutResource = method.resources[0];
+    }
+  }
+
+  const truncate = (str: string, n: number) => {
+    return (str.length > n) ? str.slice(0, n-1) + '...' : str;
+  };
+
   return (
     <Card className="h-full flex flex-col">
        <Link href={`/methods/${method.id}`} className="block flex-1 hover:bg-[var(--surface-muted)] transition-colors rounded-t-[var(--radius-interactive)]">
@@ -45,15 +61,20 @@ function MethodCard({ method, onWriteReview, onViewResources }: MethodCardProps)
        </Link>
         
        <div className="p-4 pt-0 mt-auto flex gap-2">
-          <Link
-            href={`/methods/${method.id}`}
-             className="flex-1 py-2 px-3 text-sm rounded-[var(--radius-interactive)] bg-[var(--surface-emphasis)] text-[var(--text-primary)] hover:bg-[var(--surface-hover)] transition-colors text-center font-medium"
-          >
-            Resources
-          </Link>
+          {method.resources && method.resources.length > 0 ? (
+            <a
+              href={shortcutResource?.url}
+              target="_blank" 
+              rel="noopener noreferrer"
+              className="flex-1 py-2 px-3 text-sm rounded-[var(--radius-interactive)] bg-[var(--surface-emphasis)] text-[var(--text-primary)] hover:bg-[var(--surface-hover)] transition-colors text-center font-medium truncate"
+              title={shortcutResource?.title}
+            >
+              {truncate(shortcutResource?.title || 'Resource', 15)}
+            </a>
+          ) : null}
           <Link
             href={`/methods/${method.id}?tab=reviews`}
-             className="flex-1 py-2 px-3 text-sm rounded-[var(--radius-interactive)] bg-[var(--primary)] text-white hover:bg-[var(--primary-dark)] transition-colors text-center font-medium"
+             className={`${method.resources && method.resources.length > 0 ? 'flex-1' : 'w-full'} py-2 px-3 text-sm rounded-[var(--radius-interactive)] bg-[var(--primary)] text-white hover:bg-[var(--primary-dark)] transition-colors text-center font-medium`}
           >
             Review
           </Link>

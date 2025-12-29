@@ -1,8 +1,9 @@
 'use client';
 
 import React, { useState, useEffect, use, Suspense } from 'react';
-import { useSearchParams } from 'next/navigation';
-import { Button, Textarea, Card, CardHeader, CardTitle, CardContent, Header, ResourceCard } from '@/components';
+import { useSearchParams, useRouter } from 'next/navigation';
+import Link from 'next/link';
+import { Button, Textarea, Card, CardHeader, CardTitle, CardContent, Header, ResourceCard, Input } from '@/components';
 import { useAuth } from '@/lib/contexts/AuthContext';
 import { Method, Review, TPFEvent } from '@/types';
 import { collection, getDocs, addDoc, doc, getDoc, serverTimestamp, updateDoc, query, where, orderBy, setDoc, deleteDoc, increment } from 'firebase/firestore';
@@ -12,15 +13,43 @@ import { getNextEventOccurrence } from '@/lib/utils/eventUtils';
 
 type PageParams = Promise<{ methodId: string }>;
 
+const InfoTooltip = ({ content }: { content: string }) => {
+  const [showTooltip, setShowTooltip] = useState(false);
+  
+  return (
+    <div className="relative inline-block ml-2 align-middle">
+      <button
+        type="button"
+        onMouseEnter={() => setShowTooltip(true)}
+        onMouseLeave={() => setShowTooltip(false)}
+        onClick={() => setShowTooltip(!showTooltip)}
+        className="w-5 h-5 rounded-full bg-[var(--primary)] text-white text-sm flex items-center justify-center cursor-help hover:bg-[var(--primary-dark)] transition-colors"
+        aria-label="More information"
+      >
+        i
+      </button>
+      {showTooltip && (
+        <div className="absolute left-1/2 -translate-x-1/2 bottom-full mb-2 w-64 p-3 bg-[var(--text-primary)] text-white text-sm rounded-[var(--radius-interactive)] shadow-lg z-10 text-left normal-case font-normal">
+          {content}
+        </div>
+      )}
+    </div>
+  );
+};
+
 function MethodDetailContent({ params }: { params: PageParams }) {
   const { methodId } = use(params);
   const searchParams = useSearchParams();
   const { user, isLoading: authLoading } = useAuth();
+  const router = useRouter();
   
   const [method, setMethod] = useState<Method | null>(null);
   const [reviews, setReviews] = useState<Review[]>([]);
   const [events, setEvents] = useState<TPFEvent[]>([]);
   const [isTrying, setIsTrying] = useState(false);
+  const [savedShortcut, setSavedShortcut] = useState<string | null>(null);
+  const [shortcutMode, setShortcutMode] = useState(false);
+  const [selectedShortcutUi, setSelectedShortcutUi] = useState<string | null>(null);
   
   // Initialize active tab from URL param
   const tabParam = searchParams.get('tab');
@@ -33,13 +62,18 @@ function MethodDetailContent({ params }: { params: PageParams }) {
   const [reviewScore, setReviewScore] = useState(0);
   const [reviewContent, setReviewContent] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
+
+  // Edit Mode
+  const [isEditing, setIsEditing] = useState(false);
+  const [editData, setEditData] = useState<Partial<Method>>({});
+  const [isUpdating, setIsUpdating] = useState(false);
   
   // Redirect if not authenticated
   useEffect(() => {
     if (!authLoading && !user) {
-      window.location.href = '/login';
+      router.push('/login');
     }
-  }, [authLoading, user]);
+  }, [authLoading, user, router]);
   
   // Fetch method and reviews
   useEffect(() => {
@@ -55,6 +89,7 @@ function MethodDetailContent({ params }: { params: PageParams }) {
             ...methodDoc.data(),
             createdAt: methodDoc.data().createdAt?.toDate() || new Date(),
             stats: methodDoc.data().stats || { activeUsers: 0, avgRating: 0, reviewCount: 0 },
+            suggestedMinimum: methodDoc.data().suggestedMinimum || { type: 'days', value: 7 },
           } as Method);
         }
         
@@ -115,7 +150,13 @@ function MethodDetailContent({ params }: { params: PageParams }) {
         // Check if user is trying this method
         const chosenRef = doc(db, 'users', user.uid, 'chosenMethods', methodId);
         const chosenDoc = await getDoc(chosenRef);
-        setIsTrying(chosenDoc.exists());
+        if (chosenDoc.exists()) {
+           setIsTrying(true);
+           setSavedShortcut(chosenDoc.data().shortcutResourceId || null);
+        } else {
+           setIsTrying(false);
+           setSavedShortcut(null);
+        }
 
       } catch (error) {
         console.error('Error fetching data:', error);
@@ -162,6 +203,29 @@ function MethodDetailContent({ params }: { params: PageParams }) {
     } catch (error) {
       console.error('Error toggling trying status:', error);
     }
+  };
+
+  const handleEnterShortcutMode = () => {
+       // Default to saved or first resource unique key
+       const firstResourceKey = method?.resources[0] ? (method.resources[0].id || method.resources[0].url) : null;
+       setSelectedShortcutUi(savedShortcut || firstResourceKey);
+       setShortcutMode(true);
+  };
+
+  const handleSaveShortcut = async () => {
+       if (!user) return;
+       const chosenRef = doc(db, 'users', user.uid, 'chosenMethods', methodId);
+       
+       try {
+           if (selectedShortcutUi) {
+               await updateDoc(chosenRef, { shortcutResourceId: selectedShortcutUi });
+               setSavedShortcut(selectedShortcutUi);
+           }
+       } catch (error) {
+           console.error('Error saving shortcut:', error);
+           alert('Failed to save shortcut');
+       }
+       setShortcutMode(false);
   };
 
   const handleSubmitReview = async (e: React.FormEvent) => {
@@ -223,6 +287,71 @@ function MethodDetailContent({ params }: { params: PageParams }) {
       setIsSubmitting(false);
     }
   };
+
+  const handleEditClick = () => {
+    if (method) {
+      setEditData({
+        title: method.title,
+        description: method.description,
+        resources: [...method.resources],
+        suggestedMinimum: { ...method.suggestedMinimum }
+      });
+      setIsEditing(true);
+    }
+  };
+
+  const handleUpdateMethod = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!user || !method || !editData.title?.trim()) return;
+
+    setIsUpdating(true);
+    try {
+       // Filter empty resources and ensure IDs
+       const updatedResources = (editData.resources || [])
+         .filter(r => r.title.trim() || r.url.trim())
+         .map(r => ({ ...r, id: r.id || crypto.randomUUID() }));
+
+       const updates = {
+         title: editData.title.trim(),
+         description: editData.description?.trim() || '',
+         resources: updatedResources,
+         suggestedMinimum: editData.suggestedMinimum || method.suggestedMinimum,
+       };
+
+       await updateDoc(doc(db, 'methods', methodId), updates);
+       
+       setMethod({ ...method, ...updates });
+       setIsEditing(false);
+    } catch (error) {
+       console.error("Error updating method:", error);
+       alert("Failed to update method.");
+    } finally {
+       setIsUpdating(false);
+    }
+  };
+
+  const updateEditResource = (index: number, field: 'title' | 'url', value: string) => {
+    setEditData(prev => {
+        if (!prev.resources) return prev;
+        const newResources = [...prev.resources];
+        newResources[index] = { ...newResources[index], [field]: value };
+        return { ...prev, resources: newResources };
+    });
+  };
+
+  const addEditResource = () => {
+     setEditData(prev => ({
+        ...prev,
+        resources: [...(prev.resources || []), { title: '', url: '', id: crypto.randomUUID() }]
+     }));
+  };
+
+  const removeEditResource = (index: number) => {
+     setEditData(prev => ({
+        ...prev,
+        resources: (prev.resources || []).filter((_, i) => i !== index)
+     }));
+  };
   
   if (authLoading || isLoading) {
     return (
@@ -238,9 +367,9 @@ function MethodDetailContent({ params }: { params: PageParams }) {
         <div className="text-center">
           <div className="text-6xl mb-4">🔍</div>
           <h2 className="text-xl font-bold text-[var(--text-primary)]">Method not found</h2>
-          <a href="/goals" className="text-[var(--primary)] hover:underline mt-4 inline-block">
+          <Link href="/goals" className="text-[var(--primary)] hover:underline mt-4 inline-block">
             ← Back to Goals
-          </a>
+          </Link>
         </div>
       </div>
     );
@@ -253,13 +382,109 @@ function MethodDetailContent({ params }: { params: PageParams }) {
       {/* Content */}
       <main className="container py-8">
         {/* Method Header */}
-        <div className="mb-8">
-          <h1 className="text-2xl font-bold text-[var(--text-primary)] mb-2">
-            {method.title}
-          </h1>
-          <p className="text-[var(--text-secondary)] mb-4">
-            {method.description}
-          </p>
+        {/* Method Header / Edit Form */}
+        {isEditing ? (
+           <Card className="mb-8">
+             <CardContent className="pt-6">
+                <form onSubmit={handleUpdateMethod} className="space-y-4">
+                  <Input
+                    label="Method Title"
+                    value={editData.title || ''}
+                    onChange={(e) => setEditData({ ...editData, title: e.target.value })}
+                    required
+                  />
+                  <Textarea
+                    label="Description"
+                    value={editData.description || ''}
+                    onChange={(e) => setEditData({ ...editData, description: e.target.value })}
+                  />
+                  
+                  <div>
+                      <div className="flex items-center gap-2 mb-2">
+                          <label className="block text-sm font-medium text-[var(--text-primary)]">
+                            Resources
+                          </label>
+                          <InfoTooltip content="The first resource in this list will be the default shortcut button on the Goals Dashboard. Users can customize this for themselves later." />
+                      </div>
+                      <div className="space-y-2">
+                        {editData.resources?.map((resource, index) => (
+                           <div key={index} className="flex gap-2 relative">
+                              {index === 0 && (
+                                <div className="absolute -top-2 right-8 z-10 bg-[var(--surface-emphasis)] text-[var(--text-primary)] text-[9px] font-bold px-1.5 py-0.5 rounded-sm uppercase tracking-wider border border-[var(--border-subtle)]">
+                                  Default Shortcut
+                                </div>
+                              )}
+                              <Input
+                                placeholder="Title"
+                                value={resource.title}
+                                onChange={(e) => updateEditResource(index, 'title', e.target.value)}
+                                className="flex-1"
+                              />
+                              <Input
+                                placeholder="URL"
+                                value={resource.url}
+                                onChange={(e) => updateEditResource(index, 'url', e.target.value)}
+                                className="flex-1"
+                              />
+                              <button type="button" onClick={() => removeEditResource(index)} className="text-red-500 px-2">✕</button>
+                           </div>
+                        ))}
+                        <button type="button" onClick={addEditResource} className="text-primary text-sm hover:underline">+ Add resource</button>
+                      </div>
+                  </div>
+
+                  <div>
+                     <label className="block text-sm font-medium text-[var(--text-primary)] mb-2">Type</label>
+                     <div className="flex gap-2">
+                        <Input
+                           type="number"
+                           min="1"
+                           value={editData.suggestedMinimum?.value || 1}
+                           onChange={(e) => setEditData({
+                               ...editData, 
+                               suggestedMinimum: { ...editData.suggestedMinimum!, value: parseInt(e.target.value) || 1 } 
+                           })}
+                           className="w-24"
+                        />
+                        <select
+                           value={editData.suggestedMinimum?.type || 'days'}
+                           onChange={(e) => setEditData({
+                               ...editData,
+                               suggestedMinimum: { ...editData.suggestedMinimum!, type: e.target.value as any }
+                           })}
+                           className="input"
+                        >
+                           <option value="hours">hours</option>
+                           <option value="days">days</option>
+                           <option value="attempts">attempts</option>
+                        </select>
+                     </div>
+                  </div>
+
+                  <div className="flex gap-2 justify-end">
+                     <Button type="button" variant="secondary" onClick={() => setIsEditing(false)}>Cancel</Button>
+                     <Button type="submit" isLoading={isUpdating}>Save Changes</Button>
+                  </div>
+                </form>
+             </CardContent>
+           </Card>
+        ) : (
+        <div className="mb-8 relative group">
+          <div className="flex justify-between items-start">
+             <div>
+                <h1 className="text-2xl font-bold text-[var(--text-primary)] mb-2">
+                  {method.title}
+                </h1>
+                <p className="text-[var(--text-secondary)] mb-4">
+                  {method.description}
+                </p>
+             </div>
+             {user?.uid === method.createdBy && (
+               <Button variant="secondary" onClick={handleEditClick} className="ml-4">
+                 Edit
+               </Button>
+             )}
+          </div>
           
           <div className="mb-4">
             <button
@@ -287,6 +512,7 @@ function MethodDetailContent({ params }: { params: PageParams }) {
             </div>
           </div>
         </div>
+        )}
         
         {/* Tabs */}
         <div className="flex gap-2 mb-8 p-1 bg-[var(--surface-subtle)] rounded-[var(--radius-interactive)]">
@@ -332,13 +558,61 @@ function MethodDetailContent({ params }: { params: PageParams }) {
               </div>
             ) : (
               <div className="space-y-3">
-                {method.resources.map((resource, index) => (
-                  <ResourceCard
-                    key={index}
-                    title={resource.title}
-                    url={resource.url}
-                  />
-                ))}
+                {method.resources.map((resource, index) => {
+                  // Determine unique identifier for this resource
+                  const resourceKey = resource.id;
+                  
+                  // Calculate if we have a valid saved shortcut in the current list
+                  const hasValidShortcut = method.resources.some(r => r.id === savedShortcut);
+                  const isSelected = selectedShortcutUi === resourceKey;
+
+                  return (
+                    <div key={index} className="flex items-center gap-3">
+                       {shortcutMode && (
+                          <input 
+                              type="radio" 
+                              name="shortcut"
+                              checked={!!resourceKey && isSelected}
+                              onChange={() => resourceKey && setSelectedShortcutUi(resourceKey)}
+                              className="w-5 h-5 accent-[var(--primary)] cursor-pointer"
+                              disabled={!resourceKey} // Disable if no ID
+                          />
+                       )}
+                       <div className="flex-1 relative">
+                          {isSelected && shortcutMode && (
+                              <div className="absolute -top-2 -right-2 z-10 bg-[var(--surface-emphasis)] text-[var(--text-primary)] text-[10px] font-bold px-2 py-0.5 rounded-full shadow-sm uppercase tracking-wider border border-[var(--primary)]">
+                                Selected
+                              </div>
+                          )}
+                          {!shortcutMode && ((savedShortcut === resourceKey) || (!hasValidShortcut && index === 0)) && (
+                            <div className="absolute -top-2 -right-2 z-10 bg-[var(--primary)] text-white text-[10px] font-bold px-2 py-0.5 rounded-full shadow-sm uppercase tracking-wider">
+                              Shortcut
+                            </div>
+                          )}
+                          <ResourceCard
+                            title={resource.title}
+                            url={resource.url}
+                          />
+                       </div>
+                    </div>
+                  );
+                })}
+                
+                {isTrying && method.resources.length > 1 && (
+                   <div className="mt-6 flex items-center gap-2">
+                        {!shortcutMode ? (
+                             <>
+                               <Button onClick={handleEnterShortcutMode} variant="secondary">Select shortcut</Button>
+                               <InfoTooltip content="Choose which resource appears as the quick access button on your dashboard card. Only one can be selected. You must save for changes to apply." />
+                             </>
+                        ) : (
+                             <div className="flex gap-2">
+                                <Button onClick={handleSaveShortcut}>Save</Button>
+                                <Button onClick={() => setShortcutMode(false)} variant="secondary">Cancel</Button>
+                             </div>
+                        )}
+                   </div>
+                )}
               </div>
             )}
           </div>
@@ -452,7 +726,7 @@ function MethodDetailContent({ params }: { params: PageParams }) {
           <div className="animate-fade-in">
             {/* Create Event Button */}
             <div className="mb-6">
-              <Button onClick={() => window.location.href = `/events/create?methodId=${methodId}`}>
+              <Button onClick={() => router.push(`/events/create?methodId=${methodId}`)}>
                 ➕ Create Event
               </Button>
             </div>
@@ -462,7 +736,7 @@ function MethodDetailContent({ params }: { params: PageParams }) {
               <div className="text-center py-12">
                 <div className="text-5xl mb-4">📅</div>
                 <p className="text-[var(--text-muted)] mb-4">No upcoming events</p>
-                <Button onClick={() => window.location.href = `/events/create?methodId=${methodId}`}>
+                <Button onClick={() => router.push(`/events/create?methodId=${methodId}`)}>
                   Create the First Event
                 </Button>
               </div>

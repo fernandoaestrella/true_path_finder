@@ -139,7 +139,7 @@ h4 { font-size: 1.125rem; }
   transition: box-shadow var(--transition-normal), transform var(--transition-normal), background-color var(--transition-normal);
 }
 
-.card:hover {
+.card-interactive:hover {
   box-shadow: var(--shadow-md);
   background: var(--surface-muted);
 }

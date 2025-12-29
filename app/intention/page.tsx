@@ -1,65 +1,29 @@
 'use client';
 
 import React, { useState, useEffect } from 'react';
+import { useRouter } from 'next/navigation';
 import { useAuth } from '@/lib/contexts/AuthContext';
-import { Goal } from '@/types';
-import { collection, getDocs } from 'firebase/firestore';
-import { db } from '@/src/lib/firebase/config';
+import { useUserData } from '@/lib/contexts/UserDataContext';
 
 export default function IntentionPage() {
   const { user, isLoading: authLoading } = useAuth();
-  const [goals, setGoals] = useState<Goal[]>([]);
+  const { chosenGoals, isLoading: dataLoading } = useUserData();
+  const router = useRouter();
+  
   const [selectedGoalIds, setSelectedGoalIds] = useState<string[]>([]);
-  const [isLoading, setIsLoading] = useState(true);
   
   useEffect(() => {
     if (!authLoading && !user) {
-      window.location.href = '/login';
+      router.push('/login');
     }
-  }, [authLoading, user]);
-  
-  useEffect(() => {
-    if (!user) return;
-    
-    const fetchGoals = async () => {
-      try {
-        const chosenGoalsRef = collection(db, 'users', user.uid, 'chosenGoals');
-        const chosenGoalsSnap = await getDocs(chosenGoalsRef);
-        const goalIds = chosenGoalsSnap.docs.map(doc => doc.id);
-        
-        if (goalIds.length === 0) {
-          setGoals([]);
-          setIsLoading(false);
-          return;
-        }
-        
-        const goalsRef = collection(db, 'goals');
-        const goalsSnap = await getDocs(goalsRef);
-        const userGoals = goalsSnap.docs
-          .filter(doc => goalIds.includes(doc.id))
-          .map(doc => ({
-            id: doc.id,
-            ...doc.data(),
-            createdAt: doc.data().createdAt?.toDate() || new Date(),
-          })) as Goal[];
-        
-        setGoals(userGoals);
-      } catch (error) {
-        console.error('Error fetching goals:', error);
-      } finally {
-        setIsLoading(false);
-      }
-    };
-    
-    fetchGoals();
-  }, [user]);
+  }, [authLoading, user, router]);
   
   const handleContinue = () => {
     // Store intention completion
     const today = new Date().toDateString();
     localStorage.setItem('dailyIntentionCompleted', today);
     localStorage.setItem('selectedGoalsFocus', JSON.stringify(selectedGoalIds));
-    window.location.href = '/dashboard';
+    router.push('/dashboard');
   };
   
   const toggleGoal = (goalId: string) => {
@@ -70,7 +34,7 @@ export default function IntentionPage() {
     );
   };
   
-  if (authLoading || isLoading) {
+  if (authLoading || dataLoading) {
     return (
       <div className="min-h-screen bg-[var(--background)] flex items-center justify-center">
         <div className="text-[var(--text-muted)]">Loading...</div>
@@ -85,13 +49,13 @@ export default function IntentionPage() {
           What will you focus on today?
         </h1>
         
-        {goals.length === 0 ? (
+        {chosenGoals.length === 0 ? (
           <div className="text-center mb-8">
             <p className="text-[var(--text-secondary)] mb-6">
               You haven't chosen any goals yet.
             </p>
             <button
-              onClick={() => window.location.href = '/goals'}
+              onClick={() => router.push('/goals')}
               className="btn btn-primary"
             >
               Choose Goals
@@ -99,7 +63,7 @@ export default function IntentionPage() {
           </div>
         ) : (
           <div className="space-y-3 mb-12">
-            {goals.map((goal) => (
+            {chosenGoals.map((goal) => (
               <button
                 key={goal.id}
                 onClick={() => toggleGoal(goal.id)}
@@ -122,7 +86,7 @@ export default function IntentionPage() {
           </div>
         )}
         
-        {goals.length > 0 && (
+        {chosenGoals.length > 0 && (
           <button
             onClick={handleContinue}
             disabled={selectedGoalIds.length === 0}

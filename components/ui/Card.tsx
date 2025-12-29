@@ -1,24 +1,47 @@
 import React from 'react';
 
-interface CardProps {
+interface BaseCardProps {
   children: React.ReactNode;
   className?: string;
   elevated?: boolean;
-  onClick?: () => void;
   as?: 'div' | 'article' | 'section';
 }
 
-export function Card({
+export function InfoCard({
+  children,
+  className = '',
+  elevated = false,
+  as: Component = 'div',
+}: BaseCardProps) {
+  const classes = [
+    'card',
+    elevated && 'card-elevated',
+    className,
+  ].filter(Boolean).join(' ');
+  
+  return (
+    <Component className={classes}>
+      {children}
+    </Component>
+  );
+}
+
+interface ActionCardProps extends BaseCardProps {
+  onClick: () => void;
+}
+
+export function ActionCard({
   children,
   className = '',
   elevated = false,
   onClick,
   as: Component = 'div',
-}: CardProps) {
+}: ActionCardProps) {
   const classes = [
     'card',
+    'card-interactive',
     elevated && 'card-elevated',
-    onClick && 'cursor-pointer',
+    'cursor-pointer',
     className,
   ].filter(Boolean).join(' ');
   
@@ -27,6 +50,17 @@ export function Card({
       {children}
     </Component>
   );
+}
+
+interface CardProps extends BaseCardProps {
+  onClick?: () => void;
+}
+
+export function Card({ onClick, ...props }: CardProps) {
+  if (onClick) {
+    return <ActionCard onClick={onClick} {...props} />;
+  }
+  return <InfoCard {...props} />;
 }
 
 interface CardHeaderProps {

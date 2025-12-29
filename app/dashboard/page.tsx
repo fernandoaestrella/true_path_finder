@@ -1,173 +1,59 @@
 'use client';
 
 import React, { useState, useEffect, Suspense } from 'react';
-import { useSearchParams } from 'next/navigation';
+import { useSearchParams, useRouter } from 'next/navigation';
 import { Header, EventCard } from '@/components';
 import { MethodsGrid } from '@/components/features/MethodsGrid';
 import { useSessionTimer } from '@/lib/hooks/useSessionTimer';
 import { useAuth } from '@/lib/contexts/AuthContext';
-import { Goal, Method, TPFEvent } from '@/types';
-import { collection, query, where, getDocs, doc, getDoc } from 'firebase/firestore';
-import { db } from '@/src/lib/firebase/config';
-import { getNextEventOccurrence } from '@/lib/utils/eventUtils';
-
-interface MethodsByGoal {
-  goal: Goal;
-  methods: Method[];
-}
+import { useUserData } from '@/lib/contexts/UserDataContext';
 
 function DashboardContent() {
   const { user, isLoading: authLoading } = useAuth();
+  const { methodsByGoal, myEvents, isLoading: dataLoading, refreshUserData, chosenGoals } = useUserData();
   const { resetTimer } = useSessionTimer();
   const searchParams = useSearchParams();
+  const router = useRouter();
   
   const isDebug = searchParams.get('debug') === 'true';
   
   const [showPasswordPrompt, setShowPasswordPrompt] = useState(false);
   const [password, setPassword] = useState('');
-  const [chosenGoals, setChosenGoals] = useState<Goal[]>([]);
-  const [methodsByGoal, setMethodsByGoal] = useState<MethodsByGoal[]>([]);
-  const [myEvents, setMyEvents] = useState<TPFEvent[]>([]);
-  const [isLoading, setIsLoading] = useState(true);
-  
-  // Check for daily intention completion
-
   
   // Redirect if not authenticated
   useEffect(() => {
     if (!authLoading && !user) {
-      window.location.href = '/login';
+      router.push('/login');
     }
-  }, [authLoading, user]);
+  }, [authLoading, user, router]);
 
-  // Fetch data
+  // Check for daily intention logic
   useEffect(() => {
-    if (!user) return;
-    
-    const fetchData = async () => {
-      try {
-        // 1. Fetch chosen goals
-        const chosenGoalsRef = collection(db, 'users', user.uid, 'chosenGoals');
-        const chosenGoalsSnap = await getDocs(chosenGoalsRef);
-        const goalIds = chosenGoalsSnap.docs.map(doc => doc.id);
-
-        // Check for daily intention - only if user has goals
-        const today = new Date().toDateString();
-        const completed = localStorage.getItem('dailyIntentionCompleted');
-        
-        if (goalIds.length > 0 && completed !== today) {
-          window.location.href = '/intention';
-          return;
-        }
-        
-        let fetchedGoals: Goal[] = [];
-        
-        if (goalIds.length > 0) {
-          const goalsRef = collection(db, 'goals'); // Ideally fetch by ID, but simplified: fetch all and filter
-          const goalsSnap = await getDocs(goalsRef);
-          fetchedGoals = goalsSnap.docs
-            .filter(doc => goalIds.includes(doc.id))
-            .map(doc => ({
-              id: doc.id,
-              ...doc.data(),
-              createdAt: doc.data().createdAt?.toDate() || new Date(),
-            })) as Goal[];
-          
-          setChosenGoals(fetchedGoals);
-        } else {
-             setChosenGoals([]);
-        }
-        
-        // 2. Fetch chosen methods
-        const chosenMethodsRef = collection(db, 'users', user.uid, 'chosenMethods');
-        const chosenMethodsSnap = await getDocs(query(chosenMethodsRef, where('status', '==', 'active')));
-        const methodIds = chosenMethodsSnap.docs.map(doc => doc.id);
-        
-        if (methodIds.length > 0) {
-           const methodsRef = collection(db, 'methods');
-           const methodsSnap = await getDocs(methodsRef);
-           const methods = methodsSnap.docs
-             .filter(doc => methodIds.includes(doc.id))
-             .map(doc => ({
-               id: doc.id,
-               ...doc.data(),
-               createdAt: doc.data().createdAt?.toDate() || new Date(),
-               stats: doc.data().stats || { activeUsers: 0, avgRating: 0, reviewCount: 0 }
-             })) as Method[];
-             
-           const grouped = fetchedGoals.map(goal => ({
-             goal,
-             methods: methods.filter(m => m.goalId === goal.id),
-           }));
-           setMethodsByGoal(grouped);
-        } else {
-            setMethodsByGoal(fetchedGoals.map(goal => ({ goal, methods: [] })));
-        }
-
-        // 3. Fetch User's RSVPd Events
-        const rsvpsRef = collection(db, 'users', user.uid, 'rsvps');
-        const rsvpsSnap = await getDocs(rsvpsRef);
-        const eventIds = rsvpsSnap.docs.map(doc => doc.data().eventId || doc.id); // handle legacy or structure
-
-        if (eventIds.length > 0) {
-            // Fetch events one by one or query. For now one by one.
-            const eventsData: TPFEvent[] = [];
-            for (const eid of eventIds) {
-                const eventDoc = await getDoc(doc(db, 'events', eid));
-                if (eventDoc.exists()) {
-                    const data = eventDoc.data();
-                    eventsData.push({
-                        id: eventDoc.id,
-                        methodId: data.methodId,
-                        title: data.title,
-                        description: data.description,
-                        links: data.links || [],
-                        phases: data.phases,
-                        startTime: data.startTime?.toDate() || new Date(),
-                        maxPerBatch: data.maxPerBatch,
-                        repeatability: data.repeatability,
-                        createdBy: data.createdBy,
-                    } as TPFEvent);
-                }
-            }
-            // Sort by next occurrence
-            eventsData.sort((a, b) => {
-                const nextA = getNextEventOccurrence(a)?.getTime() || 0;
-                const nextB = getNextEventOccurrence(b)?.getTime() || 0;
-                return nextA - nextB;
-            });
-            // Filter out events that won't occur anymore
-            setMyEvents(eventsData.filter(e => getNextEventOccurrence(e) !== null));
-        } else {
-            setMyEvents([]);
-        }
-
-      } catch (error) {
-        console.error('Error fetching data:', error);
-      } finally {
-        setIsLoading(false);
+    // Only check once data is loaded and if we have goals
+    if (!dataLoading && chosenGoals.length > 0) {
+      const today = new Date().toDateString();
+      const completed = localStorage.getItem('dailyIntentionCompleted');
+      
+      if (completed !== today) {
+        router.push('/intention');
       }
-    };
-    
-    fetchData();
-  }, [user]);
+    }
+  }, [dataLoading, chosenGoals, router]);
   
   const handleWriteReview = (methodId: string) => {
-    window.location.href = `/methods/${methodId}?tab=reviews`;
+    router.push(`/methods/${methodId}?tab=reviews`);
   };
   
   const handleViewResources = (methodId: string) => {
-    window.location.href = `/methods/${methodId}`;
+    router.push(`/methods/${methodId}`);
   };
 
-  const handleRsvpRefresh = () => {
-     // Simple refresh logic: reload page or refetch?
-     // For improved UX we would refetch just events. 
-     // Since this adds/removes, we can just reload.
-     window.location.reload(); 
+  const handleRsvpRefresh = async () => {
+     await refreshUserData();
   };
   
-  if (authLoading || isLoading) {
+  // Show loading state only during initial auth check or if data is loading AND we have no data yet
+  if (authLoading || (dataLoading && methodsByGoal.length === 0)) {
     return (
       <div className="min-h-screen bg-[var(--background)] flex items-center justify-center">
         <div className="text-[var(--text-muted)]">Loading...</div>

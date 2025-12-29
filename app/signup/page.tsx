@@ -1,6 +1,8 @@
 'use client';
 
 import React, { useState } from 'react';
+import Link from 'next/link';
+import { useRouter } from 'next/navigation';
 import { Button, Input } from '@/components';
 import { createUserWithEmailAndPassword } from 'firebase/auth';
 import { doc, setDoc, serverTimestamp } from 'firebase/firestore';
@@ -22,6 +24,7 @@ const timezoneOptions = [
 ];
 
 export default function SignupPage() {
+  const router = useRouter();
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
@@ -67,7 +70,7 @@ export default function SignupPage() {
       });
       
       // Redirect to dashboard
-      window.location.href = '/dashboard';
+      router.push('/dashboard');
     } catch (err) {
       console.error('Signup error:', err);
       if (err instanceof Error) {
@@ -160,9 +163,9 @@ export default function SignupPage() {
           
           <p className="text-center text-sm text-[var(--text-muted)]">
             Already have an account?{' '}
-            <a href="/login" className="text-[var(--primary)] hover:underline">
+            <Link href="/login" className="text-[var(--primary)] hover:underline">
               Sign in
-            </a>
+            </Link>
           </p>
         </form>
       </div>

@@ -1,11 +1,14 @@
 'use client';
 
 import React, { useState } from 'react';
+import Link from 'next/link';
+import { useRouter } from 'next/navigation';
 import { Button, Input } from '@/components';
 import { signInWithEmailAndPassword } from 'firebase/auth';
 import { auth } from '@/src/lib/firebase/config';
 
 export default function LoginPage() {
+  const router = useRouter();
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [isLoading, setIsLoading] = useState(false);
@@ -24,7 +27,7 @@ export default function LoginPage() {
     
     try {
       await signInWithEmailAndPassword(auth, email, password);
-      window.location.href = '/dashboard';
+      router.push('/dashboard');
     } catch (err) {
       console.error('Login error:', err);
       if (err instanceof Error) {
@@ -88,9 +91,9 @@ export default function LoginPage() {
           
           <p className="text-center text-sm text-[var(--text-muted)]">
             Don&apos;t have an account?{' '}
-            <a href="/onboarding" className="text-[var(--primary)] hover:underline">
+            <Link href="/onboarding" className="text-[var(--primary)] hover:underline">
               Get started
-            </a>
+            </Link>
           </p>
         </form>
       </div>

@@ -1,6 +1,7 @@
 'use client';
 
 import React, { useState } from 'react';
+import { useRouter } from 'next/navigation';
 import { Button } from '@/components';
 
 interface OnboardingStep {
@@ -124,6 +125,7 @@ const onboardingSteps: OnboardingStep[] = [
 ];
 
 export default function OnboardingPage() {
+  const router = useRouter();
   const [currentStep, setCurrentStep] = useState(0);
   const step = onboardingSteps[currentStep];
   const isLastStep = currentStep === onboardingSteps.length - 1;
@@ -131,7 +133,7 @@ export default function OnboardingPage() {
   const handleNext = () => {
     if (isLastStep) {
       // Navigate to signup
-      window.location.href = '/signup';
+      router.push('/signup');
     } else {
       setCurrentStep(prev => prev + 1);
     }

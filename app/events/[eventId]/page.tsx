@@ -8,7 +8,7 @@ import { useAuth } from '@/lib/contexts/AuthContext';
 import { TPFEvent, EventBatch } from '@/types';
 import PhaseIndicator from '@/components/features/PhaseIndicator';
 import ChatPanel from '@/components/features/ChatPanel';
-import { Button, Card, Header, ResourceCard } from '@/components';
+import { Button, Card, InfoCard, Header, ResourceCard } from '@/components';
 import { AddToCalendarButton } from 'add-to-calendar-button-react';
 import { getNextEventOccurrence, getEventDurationSeconds } from '@/lib/utils/eventUtils';
 import { APP_CONFIG } from '@/lib/config';
@@ -335,13 +335,13 @@ export default function EventPage() {
   if (!event) {
     return (
       <div className="min-h-screen bg-[var(--background)] flex items-center justify-center">
-        <Card className="max-w-md">
+        <InfoCard className="max-w-md">
           <h1 className="text-2xl font-bold text-[var(--text-primary)] mb-4">Event Not Found</h1>
           <p className="text-[var(--text-secondary)] mb-6">This event does not exist or has been deleted.</p>
           <Button onClick={() => router.push('/dashboard')}>
             Return to Dashboard
           </Button>
-        </Card>
+        </InfoCard>
       </div>
     );
   }
@@ -434,7 +434,7 @@ export default function EventPage() {
 
         {/* Event Links */}
         {event.links.length > 0 && (
-          <Card className="mb-6">
+          <InfoCard className="mb-6">
             <h3 className="text-lg font-semibold text-[var(--text-primary)] mb-3">Event Resources</h3>
             <div className="space-y-3">
               {event.links.map((link, index) => (
@@ -445,7 +445,7 @@ export default function EventPage() {
                 />
               ))}
             </div>
-          </Card>
+          </InfoCard>
         )}
 
         {/* Phase Indicator */}
@@ -462,7 +462,7 @@ export default function EventPage() {
 
         {/* Batch Selection, does not change color on hover */}
         {currentPhase !== 'ended' && (!selectedBatch || elapsedSeconds < 0) && (
-           <Card className="mb-6">
+           <InfoCard className="mb-6">
              {elapsedSeconds < 0 ? (
                <>
                  <div className="flex items-center mb-4">
@@ -525,16 +525,16 @@ export default function EventPage() {
                   </div>
                </>
              )}
-           </Card>
+           </InfoCard>
         )}
 
         {/* Batch Info */}
         {selectedBatch && currentPhase !== 'ended' && elapsedSeconds >= 0 && (
-          <Card className="mb-6">
+          <InfoCard className="mb-6">
             <p className="text-[var(--text-secondary)]">
               You are in <span className="font-semibold">Batch {selectedBatch}</span>
             </p>
-          </Card>
+          </InfoCard>
         )}
 
         {/* Chat Panel - Hidden during practice, and only if batch selected */}
@@ -547,11 +547,11 @@ export default function EventPage() {
         )}
         
         {selectedBatch && currentPhase === 'practice' && (
-          <Card className="mb-6 text-center py-8">
+          <InfoCard className="mb-6 text-center py-8">
             <p className="text-[var(--text-secondary)]">
               Chat is disabled during practice. Focus on your work.
             </p>
-          </Card>
+          </InfoCard>
         )}
         
         {selectedBatch && currentPhase === 'close' && (

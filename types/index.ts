@@ -41,6 +41,7 @@ export interface ChosenGoal {
 // ============================================================================
 
 export interface Resource {
+  id?: string; // Optional for backward compatibility, required for new resources
   title: string;
   url: string;
 }
@@ -78,7 +79,8 @@ export interface ChosenMethod {
   methodId: string;
   addedAt: Date;
   attempts: Attempt[];
-  status: 'active' | 'tested';
+  status: 'active' | 'active_legacy' | 'tested';
+  shortcutResourceId?: string; // ID of the resource (or URL for legacy)
 }
 
 // ============================================================================

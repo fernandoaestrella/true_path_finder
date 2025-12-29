@@ -1,6 +1,8 @@
 'use client';
 
 import React, { useState, useEffect, use } from 'react';
+import Link from 'next/link';
+import { useRouter } from 'next/navigation';
 import { Button, Input, Textarea, Card, CardHeader, CardTitle, CardContent, CardFooter, Header } from '@/components';
 import { useAuth } from '@/lib/contexts/AuthContext';
 import { Method, Goal, Resource, SuggestedMinimum } from '@/types';
@@ -11,6 +13,7 @@ type PageParams = Promise<{ goalId: string }>;
 
 export default function MethodsPage({ params }: { params: PageParams }) {
   const { goalId } = use(params);
+  const router = useRouter();
   const { user, isLoading: authLoading } = useAuth();
   
   const [goal, setGoal] = useState<Goal | null>(null);
@@ -32,9 +35,9 @@ export default function MethodsPage({ params }: { params: PageParams }) {
   // Redirect if not authenticated
   useEffect(() => {
     if (!authLoading && !user) {
-      window.location.href = '/login';
+      router.push('/login');
     }
-  }, [authLoading, user]);
+  }, [authLoading, user, router]);
   
   // Fetch goal and methods
   useEffect(() => {
@@ -142,13 +145,16 @@ export default function MethodsPage({ params }: { params: PageParams }) {
     setIsCreating(true);
     
     try {
-      const validResources = newMethod.resources.filter(r => r.title.trim() || r.url.trim());
+      // Assign IDs to resources
+      const resourcesWithIds = newMethod.resources
+        .filter(r => r.title.trim() || r.url.trim())
+        .map(r => ({ ...r, id: crypto.randomUUID() }));
       
       const methodDoc = await addDoc(collection(db, 'methods'), {
         goalId,
         title: newMethod.title.trim(),
         description: newMethod.description.trim(),
-        resources: validResources,
+        resources: resourcesWithIds,
         suggestedMinimum: newMethod.suggestedMinimum,
         createdBy: user.uid,
         createdAt: serverTimestamp(),
@@ -161,7 +167,7 @@ export default function MethodsPage({ params }: { params: PageParams }) {
         goalId,
         title: newMethod.title.trim(),
         description: newMethod.description.trim(),
-        resources: validResources,
+        resources: resourcesWithIds,
         suggestedMinimum: newMethod.suggestedMinimum,
         createdBy: user.uid,
         createdAt: new Date(),
@@ -413,12 +419,12 @@ export default function MethodsPage({ params }: { params: PageParams }) {
                   </CardContent>
                   <CardFooter>
                     <div className="flex gap-2">
-                      <a
+                      <Link
                         href={`/methods/${method.id}`}
-                        className="flex-1 btn btn-secondary text-sm py-2"
+                        className="flex-1 btn btn-secondary text-sm py-2 text-center"
                       >
                         View Details
-                      </a>
+                      </Link>
                       <button
                         className="px-3 py-2 text-[var(--text-muted)] hover:text-[var(--text-secondary)] transition-colors cursor-pointer"
                         title="Flag method (coming soon)"

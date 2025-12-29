@@ -1,18 +1,33 @@
 'use client';
 
 import React, { useState, useEffect } from 'react';
+import { useRouter } from 'next/navigation';
 import { Button, Input, Textarea, Card, CardHeader, CardTitle, CardContent, Header } from '@/components';
 import { useAuth } from '@/lib/contexts/AuthContext';
+import { useUserData } from '@/lib/contexts/UserDataContext';
 import { Goal } from '@/types';
-import { collection, getDocs, addDoc, setDoc, deleteDoc, doc, serverTimestamp } from 'firebase/firestore';
+import { collection, getDocs, addDoc, setDoc, deleteDoc, doc, serverTimestamp, query, where, getCountFromServer } from 'firebase/firestore';
 import { db } from '@/src/lib/firebase/config';
+
+type GoalWithStats = Goal & {
+  methodCount: number;
+};
 
 export default function GoalsPage() {
   const { user, isLoading: authLoading } = useAuth();
+  const { chosenGoals, refreshUserData, allGoals, isLoading: contextLoading } = useUserData();
+  const router = useRouter();
   
-  const [goals, setGoals] = useState<Goal[]>([]);
+  const [goals, setGoals] = useState<GoalWithStats[]>(
+    allGoals.map(g => ({ ...g, methodCount: 0 }))
+  );
   const [chosenGoalIds, setChosenGoalIds] = useState<Set<string>>(new Set());
-  const [isLoading, setIsLoading] = useState(true);
+  
+  // Initialize loading state:
+  // If we have goals, we are ready.
+  // If we don't have goals, we wait for context to finish loading.
+  const [isLoading, setIsLoading] = useState(allGoals.length === 0 && contextLoading);
+  
   const [searchQuery, setSearchQuery] = useState('');
   const [showCreateForm, setShowCreateForm] = useState(false);
   const [newGoalTitle, setNewGoalTitle] = useState('');
@@ -22,59 +37,100 @@ export default function GoalsPage() {
   // Redirect if not authenticated
   useEffect(() => {
     if (!authLoading && !user) {
-      window.location.href = '/login';
+      router.push('/login');
     }
-  }, [authLoading, user]);
-  
-  // Fetch goals
+  }, [authLoading, user, router]);
+
+  // Sync chosen goals from context
   useEffect(() => {
-    if (!user) return;
+    if (chosenGoals.length > 0) {
+      setChosenGoalIds(new Set(chosenGoals.map(g => g.id)));
+    }
+  }, [chosenGoals]);
+
+  // Update loading state when context finishes or goals arrive
+  useEffect(() => {
+      if (allGoals.length > 0 || !contextLoading) {
+          setIsLoading(false);
+      }
+      
+      // Update local goals if context allGoals updates (and we haven't already with same data)
+      // This is basic sync. 
+      if (allGoals.length > 0 && goals.length === 0) {
+          setGoals(allGoals.map(g => ({ ...g, methodCount: 0 })));
+      }
+  }, [allGoals, contextLoading, goals.length]);
+  
+  // Fetch method counts in background
+  useEffect(() => {
+    if (!user || allGoals.length === 0) return;
     
-    const fetchGoals = async () => {
+    const fetchCounts = async () => {
       try {
-        // Fetch all goals
-        const goalsRef = collection(db, 'goals');
-        const goalsSnap = await getDocs(goalsRef);
-        const allGoals = goalsSnap.docs.map(doc => ({
-          id: doc.id,
-          ...doc.data(),
-          createdAt: doc.data().createdAt?.toDate() || new Date(),
-        })) as Goal[];
+        const updatedGoals = await Promise.all(allGoals.map(async (goal) => {
+           const methodsRef = collection(db, 'methods');
+           const q = query(methodsRef, where('goalId', '==', goal.id));
+           const snapshot = await getCountFromServer(q);
+           return {
+             ...goal,
+             methodCount: snapshot.data().count,
+           };
+        }));
         
-        setGoals(allGoals);
-        
-        // Fetch user's chosen goals
-        const chosenRef = collection(db, 'users', user.uid, 'chosenGoals');
-        const chosenSnap = await getDocs(chosenRef);
-        const chosenIds = new Set(chosenSnap.docs.map(doc => doc.id));
-        setChosenGoalIds(chosenIds);
+        setGoals(updatedGoals);
       } catch (error) {
-        console.error('Error fetching goals:', error);
-      } finally {
-        setIsLoading(false);
+        console.error('Error fetching stats:', error);
       }
     };
     
-    fetchGoals();
-  }, [user]);
+    fetchCounts();
+  }, [user, allGoals]);
+
+  /* 
+     If context is completely empty (first load ever), we might need to trigger refresh?
+     refreshUserData is called in Layout. 
+     So we just wait for allGoals to populate.
+  */
   
   const handleToggleGoal = async (goalId: string) => {
     if (!user) return;
     
     const chosenRef = doc(db, 'users', user.uid, 'chosenGoals', goalId);
     
-    if (chosenGoalIds.has(goalId)) {
-      // Unchoose
-      await deleteDoc(chosenRef);
-      setChosenGoalIds(prev => {
-        const next = new Set(prev);
+    // Optimistic update
+    const isCurrentlyChosen = chosenGoalIds.has(goalId);
+    setChosenGoalIds(prev => {
+      const next = new Set(prev);
+      if (isCurrentlyChosen) {
         next.delete(goalId);
-        return next;
-      });
-    } else {
-      // Choose
-      await setDoc(chosenRef, { addedAt: serverTimestamp() });
-      setChosenGoalIds(prev => new Set(prev).add(goalId));
+      } else {
+        next.add(goalId);
+      }
+      return next;
+    });
+
+    try {
+      if (isCurrentlyChosen) {
+        // Unchoose
+        await deleteDoc(chosenRef);
+      } else {
+        // Choose
+        await setDoc(chosenRef, { addedAt: serverTimestamp() });
+      }
+      // Refresh context in background
+      refreshUserData();
+    } catch (error) {
+       console.error("Error toggling goal", error);
+       // Revert on error
+       setChosenGoalIds(prev => {
+          const next = new Set(prev);
+          if (isCurrentlyChosen) {
+            next.add(goalId);
+          } else {
+            next.delete(goalId);
+          }
+          return next;
+       });
     }
   };
   
@@ -103,13 +159,14 @@ export default function GoalsPage() {
         groupId: 'general',
       };
       
-      setGoals(prev => [newGoal, ...prev]);
+      setGoals(prev => [{ ...newGoal, methodCount: 0 }, ...prev]);
       
       // Auto-choose the new goal
       await setDoc(doc(db, 'users', user.uid, 'chosenGoals', goalDoc.id), {
         addedAt: serverTimestamp(),
       });
       setChosenGoalIds(prev => new Set(prev).add(goalDoc.id));
+      refreshUserData();
       
       // Reset form
       setNewGoalTitle('');
@@ -236,13 +293,15 @@ export default function GoalsPage() {
                       {goal.description || 'No description'}
                     </p>
                     <div className="mt-4">
-                      <a
-                        href={`/goals/${goal.id}/methods`}
-                        onClick={(e) => e.stopPropagation()}
-                        className="text-sm text-[var(--primary)] hover:underline"
+                      <button
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          router.push(`/goals/${goal.id}/methods`);
+                        }}
+                        className="text-sm text-[var(--primary)] hover:underline bg-transparent border-none p-0 cursor-pointer"
                       >
-                        View methods →
-                      </a>
+                        Select a method. {goal.methodCount || 0} exist →
+                      </button>
                     </div>
                   </CardContent>
                 </Card>
