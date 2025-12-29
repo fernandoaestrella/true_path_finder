@@ -31,13 +31,7 @@ function DashboardContent() {
   const [isLoading, setIsLoading] = useState(true);
   
   // Check for daily intention completion
-  useEffect(() => {
-    const today = new Date().toDateString();
-    const completed = localStorage.getItem('dailyIntentionCompleted');
-    if (completed !== today && !authLoading && user) {
-      window.location.href = '/intention';
-    }
-  }, [authLoading, user]);
+
   
   // Redirect if not authenticated
   useEffect(() => {
@@ -56,6 +50,15 @@ function DashboardContent() {
         const chosenGoalsRef = collection(db, 'users', user.uid, 'chosenGoals');
         const chosenGoalsSnap = await getDocs(chosenGoalsRef);
         const goalIds = chosenGoalsSnap.docs.map(doc => doc.id);
+
+        // Check for daily intention - only if user has goals
+        const today = new Date().toDateString();
+        const completed = localStorage.getItem('dailyIntentionCompleted');
+        
+        if (goalIds.length > 0 && completed !== today) {
+          window.location.href = '/intention';
+          return;
+        }
         
         let fetchedGoals: Goal[] = [];
         

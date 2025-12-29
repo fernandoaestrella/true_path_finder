@@ -72,7 +72,7 @@ export default function SignupPage() {
       console.error('Signup error:', err);
       if (err instanceof Error) {
         if (err.message.includes('email-already-in-use')) {
-          setError('An account with this email already exists');
+          setError('An account with this email already exists. Sign In below.');
         } else if (err.message.includes('invalid-email')) {
           setError('Please enter a valid email address');
         } else {

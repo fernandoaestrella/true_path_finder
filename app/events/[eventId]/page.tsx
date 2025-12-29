@@ -460,7 +460,7 @@ export default function EventPage() {
 
 
 
-        {/* Batch Selection */}
+        {/* Batch Selection, does not change color on hover */}
         {currentPhase !== 'ended' && (!selectedBatch || elapsedSeconds < 0) && (
            <Card className="mb-6">
              {elapsedSeconds < 0 ? (

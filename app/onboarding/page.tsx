@@ -13,7 +13,7 @@ const onboardingSteps: OnboardingStep[] = [
   {
     title: "We're all seeking happiness",
     content: (
-      <div className="space-y-6 text-[var(--text-secondary)]">
+      <div className="space-y-4 md:space-y-6 text-[var(--text-secondary)]">
         <p>
           Every piece of content ever created—every book, video, course, practice—is 
           ultimately an answer to one question:
@@ -34,8 +34,8 @@ const onboardingSteps: OnboardingStep[] = [
   {
     title: "Goals → Methods → Reviews",
     content: (
-      <div className="space-y-6 text-[var(--text-secondary)]">
-        <ul className="space-y-4">
+      <div className="space-y-4 md:space-y-6 text-[var(--text-secondary)]">
+        <ul className="space-y-2 md:space-y-4">
           <li className="flex items-start gap-3">
             <span className="flex-shrink-0 w-8 h-8 rounded-full bg-[var(--primary)] text-white flex items-center justify-center font-bold text-sm">1</span>
             <div>
@@ -64,7 +64,7 @@ const onboardingSteps: OnboardingStep[] = [
   {
     title: "21 minutes keeps you focused",
     content: (
-      <div className="space-y-6 text-[var(--text-secondary)]">
+      <div className="space-y-4 md:space-y-6 text-[var(--text-secondary)]">
         <p>
           You have <span className="font-semibold text-[var(--text-primary)]">21 minutes per day</span> to 
           use this app.
@@ -94,9 +94,9 @@ const onboardingSteps: OnboardingStep[] = [
   {
     title: "Events bring us together",
     content: (
-      <div className="space-y-6 text-[var(--text-secondary)]">
+      <div className="space-y-4 md:space-y-6 text-[var(--text-secondary)]">
         <p>
-          Community happens through <span className="font-medium text-[var(--text-primary)]">structured events</span>.
+          Community happens through <span className="font-medium text-[var(--text-primary)]">timed, structured events</span>, not endless debate, in batches of 7 to 21 people.
         </p>
         <div className="space-y-3">
           <div className="flex items-center gap-3 p-3 bg-[var(--surface-subtle)] rounded-lg">
@@ -144,7 +144,7 @@ export default function OnboardingPage() {
   };
   
   return (
-    <div className="min-h-screen bg-[var(--background)] flex flex-col">
+    <div className="h-[100dvh] overflow-hidden bg-[var(--background)] flex flex-col">
       {/* Progress indicator */}
       <div className="fixed top-0 left-0 right-0 h-1 bg-[var(--border)]">
         <div
@@ -154,11 +154,11 @@ export default function OnboardingPage() {
       </div>
       
       {/* Content */}
-      <main className="flex-1 flex items-center justify-center p-6 pt-12">
+      <main className="flex-1 flex flex-col items-center justify-center p-4 md:p-6">
         <div className="w-full max-w-lg animate-fade-in" key={currentStep}>
           {step.illustration}
           
-          <h1 className="text-2xl md:text-3xl font-bold text-center mb-6 text-[var(--text-primary)]">
+          <h1 className="text-2xl md:text-3xl font-bold text-center mb-4 md:mb-6 text-[var(--text-primary)]">
             {step.title}
           </h1>
           
@@ -169,17 +169,19 @@ export default function OnboardingPage() {
       </main>
       
       {/* Navigation */}
-      <footer className="p-6">
-        <div className="max-w-lg mx-auto flex items-center justify-between gap-4">
-          <Button
-            variant="ghost"
-            onClick={handleBack}
-            className={currentStep === 0 ? 'invisible' : ''}
-          >
-            ← Back
-          </Button>
+      <footer className="px-6 py-4">
+        <div className="max-w-lg mx-auto grid grid-cols-[1fr_auto_1fr] items-center gap-2">
+          <div className="justify-self-start">
+            <Button
+              variant="ghost"
+              onClick={handleBack}
+              className={currentStep === 0 ? 'invisible' : ''}
+            >
+              ← Back
+            </Button>
+          </div>
           
-          <div className="flex gap-2">
+          <div className="flex gap-2 justify-self-center">
             {onboardingSteps.map((_, index) => (
               <button
                 key={index}
@@ -196,9 +198,11 @@ export default function OnboardingPage() {
             ))}
           </div>
           
-          <Button onClick={handleNext}>
-            {isLastStep ? 'Get Started' : 'Next →'}
-          </Button>
+          <div className="justify-self-end">
+            <Button onClick={handleNext}>
+              {isLastStep ? 'Get Started' : 'Next →'}
+            </Button>
+          </div>
         </div>
       </footer>
     </div>
