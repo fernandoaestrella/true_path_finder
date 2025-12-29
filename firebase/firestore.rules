@@ -26,6 +26,11 @@ service cloud.firestore {
       match /chosenMethods/{methodId} {
         allow read, write: if isOwner(userId);
       }
+      
+      // User's RSVPs
+      match /rsvps/{eventId} {
+        allow read, write: if request.auth != null && request.auth.uid == userId;
+      }
     }
     
     // Goals collection - anyone can read, authenticated can create

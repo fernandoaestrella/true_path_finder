@@ -31,8 +31,11 @@ export default function ChatPanel({ eventId, batchNumber, isEnabled }: ChatPanel
 
   // Subscribe to messages
   useEffect(() => {
+    if (!eventId || !batchNumber) return;
+    
     const messagesRef = ref(rtdb, chatPath);
     
+    // onValue returns the unsubscribe function
     const unsubscribe = onValue(messagesRef, (snapshot) => {
       const data = snapshot.val();
       if (data) {
@@ -41,7 +44,7 @@ export default function ChatPanel({ eventId, batchNumber, isEnabled }: ChatPanel
           userId: msg.userId,
           userName: msg.userName,
           message: msg.message,
-          timestamp: msg.timestamp,
+          timestamp: msg.timestamp || Date.now(), // Fallback for pending writes
         }));
         
         // Sort by timestamp
@@ -50,9 +53,11 @@ export default function ChatPanel({ eventId, batchNumber, isEnabled }: ChatPanel
       } else {
         setMessages([]);
       }
+    }, (error) => {
+      console.error('Chat subscription error:', error);
     });
 
-    return () => off(messagesRef, 'value', unsubscribe);
+    return () => unsubscribe();
   }, [eventId, batchNumber, chatPath]);
 
   // Auto-scroll to bottom
@@ -143,8 +148,8 @@ export default function ChatPanel({ eventId, batchNumber, isEnabled }: ChatPanel
                     max-w-[70%] rounded-lg px-4 py-2
                     ${
                       isOwnMessage
-                        ? 'bg-soft-blue text-white'
-                        : 'bg-gray-100 text-charcoal'
+                        ? 'bg-[var(--primary)] text-white'
+                        : 'bg-white border border-[var(--border)] text-[var(--text-primary)] shadow-sm'
                     }
                   `}
                 >

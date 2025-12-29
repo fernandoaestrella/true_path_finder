@@ -1,19 +1,72 @@
 'use client';
 
-import React, { Suspense } from 'react';
+import React, { Suspense, useState, useEffect } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { useAuth } from '@/lib/contexts/AuthContext';
 import { useTimer } from '@/lib/contexts/TimerContext';
 import { Button } from '@/components';
+import { collection, getDocs, doc, getDoc } from 'firebase/firestore';
+import { db } from '@/src/lib/firebase/config';
+import { TPFEvent } from '@/types';
+import { getNextEventOccurrence } from '@/lib/utils/eventUtils';
 
 function LimitReachedContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
-  const { logout } = useAuth();
+  const { logout, user } = useAuth();
   const { resetTimer } = useTimer();
   
   const [showPasswordPrompt, setShowPasswordPrompt] = React.useState(false);
   const [password, setPassword] = React.useState('');
+  const [nextEvent, setNextEvent] = useState<TPFEvent | null>(null);
+  
+  useEffect(() => {
+    if (!user) return;
+    
+    const fetchNextEvent = async () => {
+      try {
+        const rsvpsRef = collection(db, 'users', user.uid, 'rsvps');
+        const rsvpsSnap = await getDocs(rsvpsRef);
+        const eventIds = rsvpsSnap.docs.map(doc => doc.data().eventId || doc.id);
+
+        if (eventIds.length > 0) {
+            const eventsData: TPFEvent[] = [];
+            for (const eid of eventIds) {
+                const eventDoc = await getDoc(doc(db, 'events', eid));
+                if (eventDoc.exists()) {
+                    const data = eventDoc.data();
+                    eventsData.push({
+                        id: eventDoc.id,
+                        methodId: data.methodId,
+                        title: data.title,
+                        description: data.description,
+                        links: data.links || [],
+                        phases: data.phases,
+                        startTime: data.startTime?.toDate() || new Date(),
+                        maxPerBatch: data.maxPerBatch,
+                        repeatability: data.repeatability,
+                        createdBy: data.createdBy,
+                    } as TPFEvent);
+                }
+            }
+            
+            // Find closest upcoming event
+            const upcomingEvents = eventsData
+                .map(event => ({ event, next: getNextEventOccurrence(event) }))
+                .filter(item => item.next !== null && item.next.getTime() > Date.now())
+                .sort((a, b) => a.next!.getTime() - b.next!.getTime());
+
+            if (upcomingEvents.length > 0) {
+                setNextEvent(upcomingEvents[0].event);
+            }
+        }
+      } catch (err) {
+        console.error('Error fetching next event:', err);
+      }
+    };
+    
+    fetchNextEvent();
+  }, [user]);
   
   const isDebug = searchParams.get('debug') === 'true';
   
@@ -104,6 +157,32 @@ function LimitReachedContent() {
           <p className="text-xs text-[var(--text-muted)]">
             Your timer will reset at 3:20 AM local time.
           </p>
+          <div className="mt-4 pt-4 border-t border-[var(--border)]">
+             <p className="text-sm font-medium text-[var(--primary)]">
+               💡 Note: Scheduled Events are exempt from this limit.
+             </p>
+             <p className="text-xs text-[var(--text-secondary)] mt-1">
+               You can still join community events even if your daily timer is up.
+             </p>
+             
+             {nextEvent && (
+                <div className="mt-4 text-left">
+                  <p className="text-xs font-semibold text-[var(--text-secondary)] uppercase tracking-wider mb-2">Next Scheduled Event</p>
+                  <div 
+                    className="flex items-center justify-between p-3 bg-[var(--background)] rounded-[var(--radius-interactive)] border border-[var(--border)] cursor-pointer hover:border-[var(--primary)] transition-colors"
+                    onClick={() => router.push(`/events/${nextEvent.id}`)}
+                  >
+                     <div>
+                        <p className="font-medium text-[var(--text-primary)] text-sm">{nextEvent.title}</p>
+                        <p className="text-xs text-[var(--text-muted)]">
+                           {getNextEventOccurrence(nextEvent)?.toLocaleString([], { weekday: 'short', month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' })}
+                        </p>
+                     </div>
+                     <span className="text-[var(--primary)] text-sm">→</span>
+                  </div>
+                </div>
+             )}
+          </div>
         </div>
 
         {/* Action Button */}

@@ -2,10 +2,7 @@
 
 import React, { createContext, useContext, useState, useEffect, useCallback, useRef } from 'react';
 import { usePathname, useRouter } from 'next/navigation';
-
-const DAILY_LIMIT_MINUTES = 21;
-const RESET_HOUR = 3;
-const RESET_MINUTE = 20;
+import { APP_CONFIG } from '@/lib/config';
 
 interface TimerContextType {
   minutes: number;
@@ -19,7 +16,7 @@ interface TimerContextType {
 const TimerContext = createContext<TimerContextType | undefined>(undefined);
 
 export function TimerProvider({ children }: { children: React.ReactNode }) {
-  const [totalSeconds, setTotalSeconds] = useState(DAILY_LIMIT_MINUTES * 60);
+  const [totalSeconds, setTotalSeconds] = useState(APP_CONFIG.DAILY_TIME_LIMIT_MINUTES * 60);
   const [isPaused, setIsPaused] = useState(false);
   const intervalRef = useRef<NodeJS.Timeout | null>(null);
   
@@ -27,7 +24,7 @@ export function TimerProvider({ children }: { children: React.ReactNode }) {
   const getSessionKey = useCallback(() => {
     const now = new Date();
     const resetTime = new Date(now);
-    resetTime.setHours(RESET_HOUR, RESET_MINUTE, 0, 0);
+    resetTime.setHours(APP_CONFIG.TIMER_RESET_HOUR, APP_CONFIG.TIMER_RESET_MINUTE, 0, 0);
     
     // If we haven't passed reset time today, use yesterday's date
     if (now < resetTime) {
@@ -48,7 +45,7 @@ export function TimerProvider({ children }: { children: React.ReactNode }) {
         setTotalSeconds(parsed);
       }
     } else {
-      setTotalSeconds(DAILY_LIMIT_MINUTES * 60);
+      setTotalSeconds(APP_CONFIG.DAILY_TIME_LIMIT_MINUTES * 60);
     }
     
     // Clean up old session keys
@@ -90,8 +87,7 @@ export function TimerProvider({ children }: { children: React.ReactNode }) {
 
   // Timer countdown
   useEffect(() => {
-    // Don't count down on event pages, limit page, or public pages (unless logged in? public pages usually don't have timer shown, but context runs. Let's assume we only count on "app" pages)
-    // Actually, simple rule: don't count on event pages or if already on limit page.
+    // Don't count down on event pages, limit page, or public pages
     if (isPaused || totalSeconds <= 0 || isEventPage || isLimitPage) {
       if (intervalRef.current) {
         clearInterval(intervalRef.current);
@@ -122,8 +118,8 @@ export function TimerProvider({ children }: { children: React.ReactNode }) {
   useEffect(() => {
     const checkReset = () => {
       const now = new Date();
-      if (now.getHours() === RESET_HOUR && now.getMinutes() === RESET_MINUTE) {
-        setTotalSeconds(DAILY_LIMIT_MINUTES * 60);
+      if (now.getHours() === APP_CONFIG.TIMER_RESET_HOUR && now.getMinutes() === APP_CONFIG.TIMER_RESET_MINUTE) {
+        setTotalSeconds(APP_CONFIG.DAILY_TIME_LIMIT_MINUTES * 60);
       }
     };
     
@@ -132,9 +128,9 @@ export function TimerProvider({ children }: { children: React.ReactNode }) {
   }, []);
   
   const resetTimer = useCallback(() => {
-    setTotalSeconds(DAILY_LIMIT_MINUTES * 60);
+    setTotalSeconds(APP_CONFIG.DAILY_TIME_LIMIT_MINUTES * 60);
     const sessionKey = getSessionKey();
-    localStorage.setItem(sessionKey, (DAILY_LIMIT_MINUTES * 60).toString());
+    localStorage.setItem(sessionKey, (APP_CONFIG.DAILY_TIME_LIMIT_MINUTES * 60).toString());
   }, [getSessionKey]);
   
   const minutes = Math.floor(totalSeconds / 60);

@@ -141,7 +141,7 @@ export default function GoalsPage() {
       <Header currentPage="goals" />
       
       {/* Main Content */}
-      <main className="container py-8">
+      <main className="container py-8 mt-8">
         {/* Search and Create */}
         <div className="flex flex-col md:flex-row gap-4 mb-8">
           <div className="flex-1">
@@ -222,16 +222,12 @@ export default function GoalsPage() {
                       <CardTitle as="h4" className="text-base">
                         {goal.title}
                       </CardTitle>
-                      <div className={`w-6 h-6 rounded-full flex-shrink-0 flex items-center justify-center transition-all ${
+                      <div className={`px-3 py-1 rounded-full text-xs font-medium transition-all flex items-center justify-center min-w-[80px] ${
                         isChosen
-                          ? 'bg-[var(--primary)]'
-                          : 'bg-[var(--surface-emphasis)]'
+                          ? 'bg-[var(--primary)] text-white shadow-sm'
+                          : 'bg-[var(--surface-subtle)] text-[var(--text-secondary)] border border-[var(--border)]'
                       }`}>
-                        {isChosen && (
-                          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="3">
-                            <polyline points="20,6 9,17 4,12" />
-                          </svg>
-                        )}
+                        {isChosen ? '✓ Trying' : '+ Try Goal'}
                       </div>
                     </div>
                   </CardHeader>

@@ -1,14 +1,16 @@
 'use client';
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { useParams, useRouter } from 'next/navigation';
-import { doc, getDoc, collection, getDocs, setDoc, updateDoc, arrayUnion } from 'firebase/firestore';
+import { doc, getDoc, collection, getDocs, setDoc, updateDoc, deleteDoc, arrayUnion } from 'firebase/firestore';
 import { db } from '@/src/lib/firebase/config';
 import { useAuth } from '@/lib/contexts/AuthContext';
 import { TPFEvent, EventBatch } from '@/types';
 import PhaseIndicator from '@/components/features/PhaseIndicator';
 import ChatPanel from '@/components/features/ChatPanel';
 import { Button, Card, Header } from '@/components';
+import { AddToCalendarButton } from 'add-to-calendar-button-react';
+import { getNextEventOccurrence, getEventDurationSeconds } from '@/lib/utils/eventUtils';
 
 const getOrdinal = (n: number) => {
   const s = ["th", "st", "nd", "rd"];
@@ -23,6 +25,8 @@ export default function EventPage() {
   const router = useRouter();
   const { user } = useAuth();
   const eventId = params.eventId as string;
+  
+  const lastOccurrenceRef = useRef<number | null>(null);
   
   const [event, setEvent] = useState<TPFEvent | null>(null);
   const [batches, setBatches] = useState<EventBatch[]>([]);
@@ -107,21 +111,37 @@ export default function EventPage() {
 
     const updatePhase = () => {
       const now = new Date();
-      const start = new Date(event.startTime);
-      const elapsed = Math.floor((now.getTime() - start.getTime()) / 1000);
       
-      // Event hasn't started yet
+      // Calculate active or next occurrence
+      const currentTarget = getNextEventOccurrence(event);
+      
+      if (!currentTarget) {
+         // Non-repeating event ended
+         router.push('/dashboard');
+         return;
+      }
+      
+      const currentTimestamp = currentTarget.getTime();
+      
+      // Check for occurrence transition (Detect ending of previous one)
+      if (lastOccurrenceRef.current && lastOccurrenceRef.current !== currentTimestamp) {
+          router.push('/dashboard');
+          return;
+      }
+      
+      lastOccurrenceRef.current = currentTimestamp;
+      
+      const elapsed = Math.floor((now.getTime() - currentTarget.getTime()) / 1000);
+      setElapsedSeconds(elapsed);
+      
       if (elapsed < 0) {
         setCurrentPhase('arrival');
-        setElapsedSeconds(elapsed);
         return;
       }
       
-      setElapsedSeconds(elapsed);
-      
-      const arrivalEnd = event.phases.arrival.durationSeconds;
-      const practiceEnd = arrivalEnd + event.phases.practice.durationSeconds;
-      const closeEnd = practiceEnd + event.phases.close.durationSeconds;
+      const arrivalEnd = event.phases.arrival.durationSeconds || 0;
+      const practiceEnd = arrivalEnd + (event.phases.practice.durationSeconds || 0);
+      const closeEnd = practiceEnd + (event.phases.close.durationSeconds || 0);
       
       if (elapsed < arrivalEnd) {
         setCurrentPhase('arrival');
@@ -130,7 +150,7 @@ export default function EventPage() {
       } else if (elapsed < closeEnd) {
         setCurrentPhase('close');
       } else {
-        setCurrentPhase('ended');
+        router.push('/dashboard');
       }
     };
 
@@ -138,6 +158,20 @@ export default function EventPage() {
     const interval = setInterval(updatePhase, 1000);
     return () => clearInterval(interval);
   }, [event]);
+
+  const handleDeleteEvent = async () => {
+    if (!confirm('Are you sure you want to delete this event? This action cannot be undone.')) return;
+    
+    try {
+      await deleteDoc(doc(db, 'events', eventId));
+      router.push('/dashboard');
+    } catch (error) {
+      console.error('Error deleting event:', error);
+      alert('Failed to delete event');
+    }
+  };
+
+  const isCreator = user?.uid === event?.createdBy;
 
   const handleJoinBatch = async (batchNumber: number) => {
     if (!user || !event) return;
@@ -228,24 +262,60 @@ export default function EventPage() {
                   </div>
                 )}
              </div>
+             
+             {isCreator && (
+               <div className="flex gap-2">
+                 <Button 
+                   variant="secondary" 
+                   onClick={() => router.push(`/events/edit/${eventId}`)}
+                   className="text-sm px-3 py-1 h-8"
+                 >
+                   Edit
+                 </Button>
+                 <Button 
+                   variant="secondary" 
+                   onClick={handleDeleteEvent}
+                   className="text-sm px-3 py-1 h-8 text-red-600 hover:text-red-700 hover:bg-red-50 border-red-200"
+                 >
+                   Delete
+                 </Button>
+               </div>
+             )}
           </div>
           <p className="text-[var(--text-secondary)]">{event.description}</p>
           
           {elapsedSeconds < 0 && (
-            <div className="mt-4 p-3 bg-[var(--surface-subtle)] rounded-[var(--radius-interactive)] inline-block">
-              <span className="font-semibold text-[var(--primary)]">
-                Event starts in {
-                  (() => {
-                    const diff = Math.abs(elapsedSeconds);
-                    const hours = Math.floor(diff / 3600);
-                    const minutes = Math.floor((diff % 3600) / 60);
-                    const seconds = diff % 60;
-                    if (hours > 0) return `${hours}h ${minutes}m ${seconds}s`;
-                    if (minutes > 0) return `${minutes}m ${seconds}s`;
-                    return `${seconds}s`;
-                  })()
-                }
-              </span>
+            <div className="mt-4 flex flex-col items-start gap-4">
+               <div className="p-3 bg-[var(--surface-subtle)] rounded-[var(--radius-interactive)] inline-block">
+                  <span className="font-semibold text-[var(--primary)]">
+                    Event starts in {
+                      (() => {
+                        const diff = Math.abs(elapsedSeconds);
+                        const hours = Math.floor(diff / 3600);
+                        const minutes = Math.floor((diff % 3600) / 60);
+                        const seconds = diff % 60;
+                        if (hours > 0) return `${hours}h ${minutes}m ${seconds}s`;
+                        if (minutes > 0) return `${minutes}m ${seconds}s`;
+                        return `${seconds}s`;
+                      })()
+                    }
+                  </span>
+               </div>
+               
+               {event && getNextEventOccurrence(event) && (
+                 <AddToCalendarButton
+                   name={event.title}
+                   description={`${event.description}\n\nFrom True Path Finder ${typeof window !== 'undefined' ? window.location.origin : ''}`}
+                   options={['Google', 'Apple', 'Outlook.com']}
+                   location={`${typeof window !== 'undefined' ? window.location.origin : ''}/events/${event.id}`}
+                   startDate={getNextEventOccurrence(event)!.toISOString().split('T')[0]}
+                   endDate={getNextEventOccurrence(event)!.toISOString().split('T')[0]}
+                   startTime={getNextEventOccurrence(event)!.toTimeString().slice(0, 5)}
+                   endTime={new Date(getNextEventOccurrence(event)!.getTime() + getEventDurationSeconds(event) * 1000).toTimeString().slice(0, 5)}
+                   timeZone="currentBrowser"
+                   buttonStyle="round"
+                 />
+               )}
             </div>
           )}
         </div>
@@ -280,18 +350,7 @@ export default function EventPage() {
           />
         )}
 
-        {/* Event Ended */}
-        {currentPhase === 'ended' && (
-          <Card className="mb-6 text-center py-12">
-            <h2 className="text-3xl font-bold text-[var(--text-primary)] mb-2">Event Ended</h2>
-            <p className="text-[var(--text-secondary)] mb-6">
-              Thank you for participating!
-            </p>
-            <Button onClick={() => router.push('/dashboard')}>
-              Return to Dashboard
-            </Button>
-          </Card>
-        )}
+
 
         {/* Batch Selection */}
         {currentPhase !== 'ended' && !selectedBatch && (
@@ -353,7 +412,7 @@ export default function EventPage() {
                       className="p-4 rounded-[var(--radius-interactive)] border border-dashed border-[var(--text-muted)] text-[var(--text-secondary)] hover:border-[var(--primary)] hover:text-[var(--primary)] hover:bg-[var(--surface-subtle)] transition-all flex items-center justify-center flex-col"
                     >
                       <span className="font-medium">
-                        {batches.length === 0 ? 'Start Batch 1' : `Start Batch ${batches.length + 1}`}
+                        {batches.length === 0 ? 'Join Batch 1' : `Join Batch ${batches.length + 1}`}
                       </span>
                     </button>
                     )}

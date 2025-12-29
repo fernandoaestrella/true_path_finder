@@ -8,6 +8,7 @@ import { Method, Review, TPFEvent } from '@/types';
 import { collection, getDocs, addDoc, doc, getDoc, serverTimestamp, updateDoc, query, where, orderBy, setDoc, deleteDoc, increment } from 'firebase/firestore';
 import { db } from '@/src/lib/firebase/config';
 import { EventCard } from '@/components';
+import { getNextEventOccurrence } from '@/lib/utils/eventUtils';
 
 type PageParams = Promise<{ methodId: string }>;
 
@@ -94,19 +95,18 @@ function MethodDetailContent({ params }: { params: PageParams }) {
               phases: data.phases,
               startTime: data.startTime?.toDate() || new Date(),
               maxPerBatch: data.maxPerBatch || 21,
+              repeatability: data.repeatability,
               createdBy: data.createdBy,
             } as TPFEvent;
           })
           .filter(event => {
-            // Only show upcoming events or events happening now
-            const now = new Date();
-            const start = new Date(event.startTime);
-            const totalDuration = 
-              (event.phases?.arrival?.durationSeconds || 0) +
-              (event.phases?.practice?.durationSeconds || 0) +
-              (event.phases?.close?.durationSeconds || 0);
-            const end = new Date(start.getTime() + totalDuration * 1000);
-            return end >= now;
+            // Only show upcoming events or events happening now (handling recurrence)
+            return getNextEventOccurrence(event) !== null;
+          })
+          .sort((a, b) => {
+             const nextA = getNextEventOccurrence(a)?.getTime() || 0;
+             const nextB = getNextEventOccurrence(b)?.getTime() || 0;
+             return nextA - nextB;
           });
         
         
@@ -142,6 +142,14 @@ function MethodDetailContent({ params }: { params: PageParams }) {
         setMethod(prev => prev ? { ...prev, stats: { ...prev.stats, activeUsers: prev.stats.activeUsers - 1 } } : null);
       } else {
         // Start trying
+        // Check if user has chosen the goal
+        const goalRef = doc(db, 'users', user.uid, 'chosenGoals', method.goalId);
+        const goalDoc = await getDoc(goalRef);
+        if (!goalDoc.exists()) {
+          alert("You must be working on the parent goal to try this method. Go to Goals to add it.");
+          return;
+        }
+
         await setDoc(chosenRef, {
           addedAt: serverTimestamp(),
           attempts: [],

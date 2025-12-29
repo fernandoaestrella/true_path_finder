@@ -1,6 +1,19 @@
 {
   "rules": {
-    ".read": false,
-    ".write": false
+    "events": {
+      "$eventId": {
+        "batches": {
+          "$batchNumber": {
+            "chat": {
+              ".read": "auth != null",
+              ".write": "auth != null",
+              "$messageId": {
+                ".validate": "newData.hasChildren(['userId', 'userName', 'message', 'timestamp']) && newData.child('userId').val() === auth.uid"
+              }
+            }
+          }
+        }
+      }
+    }
   }
 }
