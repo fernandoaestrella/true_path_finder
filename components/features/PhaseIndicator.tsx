@@ -204,7 +204,7 @@ export default function PhaseIndicator({ currentPhase, phases, elapsedSeconds, i
           )
         ) : (
           <div className="flex items-center justify-center gap-2 text-[var(--text-secondary)]">
-            <span className="font-medium">Event starting soon...</span>
+            <span className="font-medium">Event not started</span>
           </div>
         )}
       </div>

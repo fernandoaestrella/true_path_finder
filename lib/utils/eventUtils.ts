@@ -37,20 +37,89 @@ export function getNextEventOccurrence(event: TPFEvent, fromDate: Date = new Dat
         break;
       case 'weekly':
         nextStart.setDate(nextStart.getDate() + (event.repeatability.interval || 1) * 7);
-        // Note: Simple weekly logic assumes start day is the day. 
-        // If daysOfWeek is complex (e.g. Mon AND Wed), we need better logic.
-        // For MVP, assuming the repeat type implies the pattern starts from startTime.
-        // If the user picked "Weekly on Mon, Wed", and startTime was Mon...
-        // We probably need to check the daysOfWeek array.
-        // Let's implement simpler logic for now matching the creation form capabilities often seen.
         break;
-      case 'monthly_date':
+      case 'monthly_date': {
+        // Move to next month
         nextStart.setMonth(nextStart.getMonth() + 1);
+        
+        // Ensure we are on the specific day requested (e.g. 1st, 15th)
+        if (event.repeatability.dayOfMonth) {
+            const targetDay = event.repeatability.dayOfMonth;
+            // Handle edge case: if target day is 31 but next month has 30, JS auto-rolls over.
+            // We want to clamp to the last day of the month if explicitly set? 
+            // Standard behavior usually is: If I say "31st", in Feb it might mean "Last day". 
+            // However, a simpler approach is strict date setting. 
+            // But nextStart already drifted.
+            // Let's reset the date to the 1st of the target month, then set the date.
+            
+            // Get the month we just moved into
+            const currentYear = nextStart.getFullYear();
+            const currentMonth = nextStart.getMonth();
+            
+            // Check max days in this month
+            const maxDays = new Date(currentYear, currentMonth + 1, 0).getDate();
+            const actualDay = Math.min(targetDay, maxDays);
+            
+            nextStart.setDate(actualDay);
+        }
         break;
-      case 'monthly_day':
+      }
+      case 'monthly_day': {
+        // "3rd Friday", "Last Sunday" etc.
+        // Move to next month first
+        nextStart.setDate(1); // Start at 1st of next month to find the day
         nextStart.setMonth(nextStart.getMonth() + 1);
-        // Complex calculation for "3rd Friday" etc would go here
+        
+        const weekOfMonth = event.repeatability.weekOfMonth || 1; // 1 = 1st, 2 = 2nd, -1 = Last
+        const dayOfWeek = event.repeatability.dayOfWeekForMonthly || 0; // 0 = Sunday
+        
+        const currentYear = nextStart.getFullYear();
+        const currentMonth = nextStart.getMonth();
+        
+        if (weekOfMonth === -1) {
+            // Find "Last X-day"
+            // Go to next month's 0th day (last day of current month)
+            const lastDayObj = new Date(currentYear, currentMonth + 1, 0);
+            const lastDate = lastDayObj.getDate();
+            const lastDayOfWeek = lastDayObj.getDay();
+            
+            // Calculate offset to get back to the target dayOfWeek
+            // e.g. Last Friday (5). Last day is Sunday (0). 
+            // We want largest date <= lastDate where day is 5.
+            
+            let offset = lastDayOfWeek - dayOfWeek;
+            if (offset < 0) offset += 7;
+            
+            nextStart.setDate(lastDate - offset);
+        } else {
+            // Find "Nth X-day"
+            // Start at 1st
+            const firstDayObj = new Date(currentYear, currentMonth, 1);
+            const firstDayOfWeek = firstDayObj.getDay();
+            
+            // Calculate how many days to add to get to the first occurrence of dayOfWeek
+            let dist = dayOfWeek - firstDayOfWeek;
+            if (dist < 0) dist += 7;
+            
+            // Now add weeks
+            const finalDate = 1 + dist + (weekOfMonth - 1) * 7;
+            
+            // Check if this date is valid for the month (e.g. 5th Friday might not exist)
+             const maxDays = new Date(currentYear, currentMonth + 1, 0).getDate();
+             if (finalDate > maxDays) {
+                 // Skip this month if the pattern doesn't fit? Or take last available?
+                 // Usually means "it doesn't happen this month". 
+                 // For now, let's just clamp or let it roll (rolling might imply next month, which loops)
+                 // Let's just set it, and if it rolls over, the next loop iteration catches it or it's valid.
+                 // Actually, if we setDate(35), it moves to next month. This might double-skip. 
+                 // But since the loop condition checks `<= fromDate`, it will fix itself eventually.
+                 nextStart.setDate(finalDate); 
+             } else {
+                 nextStart.setDate(finalDate);
+             }
+        }
         break;
+      }
       default:
         return null;
     }

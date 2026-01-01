@@ -11,6 +11,7 @@ import ChatPanel from '@/components/features/ChatPanel';
 import { Button, Card, InfoCard, Header, ResourceCard } from '@/components';
 import { AddToCalendarButton } from 'add-to-calendar-button-react';
 import { getNextEventOccurrence, getEventDurationSeconds } from '@/lib/utils/eventUtils';
+import { formatDuration, formatEventDate } from '@/lib/utils/timeUtils';
 import { APP_CONFIG } from '@/lib/config';
 
 const getOrdinal = (n: number) => {
@@ -388,19 +389,14 @@ export default function EventPage() {
           
           {elapsedSeconds < 0 && (
             <div className="mt-4 flex flex-col items-start gap-4">
+               {event && getNextEventOccurrence(event) && (
+                 <div className="text-lg font-medium text-[var(--text-primary)]">
+                   {formatEventDate(getNextEventOccurrence(event)!)}
+                 </div>
+               )}
                <div className="p-3 bg-[var(--surface-subtle)] rounded-[var(--radius-interactive)] inline-block">
                   <span className="font-semibold text-[var(--primary)]">
-                    Event starts in {
-                      (() => {
-                        const diff = Math.abs(elapsedSeconds);
-                        const hours = Math.floor(diff / 3600);
-                        const minutes = Math.floor((diff % 3600) / 60);
-                        const seconds = diff % 60;
-                        if (hours > 0) return `${hours}h ${minutes}m ${seconds}s`;
-                        if (minutes > 0) return `${minutes}m ${seconds}s`;
-                        return `${seconds}s`;
-                      })()
-                    }
+                    Event starts in {formatDuration(elapsedSeconds)}
                   </span>
                </div>
                

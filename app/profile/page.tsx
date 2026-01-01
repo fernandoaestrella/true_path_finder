@@ -1,6 +1,7 @@
 'use client';
 
 import React, { useState } from 'react';
+import Link from 'next/link';
 import { useAuth } from '@/lib/contexts/AuthContext';
 import { Header } from '@/components/layout/Header';
 import { fetchAllUserData, generateJsonExport, generateMarkdownExport, downloadFile } from '@/lib/utils/exportUtils';
@@ -42,7 +43,7 @@ export default function ProfilePage() {
         </section>
 
         {/* User Info */}
-        <section className="bg-[var(--surface-card)] p-6 rounded-[var(--radius-container)] border border-[var(--border-subtle)]">
+        <section className="bg-[var(--surface-card)] p-6 rounded-[var(--radius-container)]">
           <h2 className="text-xl font-semibold mb-4 text-[var(--text-primary)]">Account</h2>
           <div className="flex items-center gap-4">
             <div className="w-12 h-12 rounded-full bg-[var(--primary-light)] flex items-center justify-center text-[var(--primary)] font-bold text-xl">
@@ -55,8 +56,26 @@ export default function ProfilePage() {
           </div>
         </section>
 
+        {/* Philosophy & Methodology */}
+        <section className="bg-[var(--surface-card)] p-6 rounded-[var(--radius-container)]">
+          <h2 className="text-xl font-semibold mb-2 text-[var(--text-primary)]">Philosophy</h2>
+          <p className="text-sm text-[var(--text-secondary)] mb-4">
+            Revisit the core principles and methodology behind True Path Finder.
+          </p>
+          <Link 
+            href="/profile/philosophy"
+            className="inline-flex items-center gap-2 text-[var(--primary)] hover:underline font-medium"
+          >
+            Read Philosophy & Methodology
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+              <path d="M5 12h14" />
+              <path d="M12 5l7 7-7 7" />
+            </svg>
+          </Link>
+        </section>
+
         {/* Data Export */}
-        <section className="bg-[var(--surface-card)] p-6 rounded-[var(--radius-container)] border border-[var(--border-subtle)]">
+        <section className="bg-[var(--surface-card)] p-6 rounded-[var(--radius-container)]">
           <h2 className="text-xl font-semibold mb-2 text-[var(--text-primary)]">Your Data</h2>
           <p className="text-sm text-[var(--text-secondary)] mb-6">
             Download a copy of all your goals, chosen methods, reviews, and events.
@@ -66,7 +85,7 @@ export default function ProfilePage() {
             <button
               onClick={() => handleExport('json')}
               disabled={isExporting}
-              className="px-4 py-2 rounded-[var(--radius-interactive)] bg-[var(--surface-subtle)] text-[var(--text-primary)] hover:bg-[var(--primary-light)] disabled:opacity-50 disabled:cursor-not-allowed transition-colors border border-[var(--border-subtle)] flex items-center justify-center gap-2"
+              className="px-4 py-2 rounded-[var(--radius-interactive)] bg-[var(--surface-subtle)] text-[var(--text-primary)] hover:bg-[var(--primary-light)] disabled:opacity-50 disabled:cursor-not-allowed transition-colors flex items-center justify-center gap-2"
             >
               <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
                 <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" />
@@ -78,7 +97,7 @@ export default function ProfilePage() {
             <button
               onClick={() => handleExport('markdown')}
               disabled={isExporting}
-              className="px-4 py-2 rounded-[var(--radius-interactive)] bg-[var(--surface-subtle)] text-[var(--text-primary)] hover:bg-[var(--primary-light)] disabled:opacity-50 disabled:cursor-not-allowed transition-colors border border-[var(--border-subtle)] flex items-center justify-center gap-2"
+              className="px-4 py-2 rounded-[var(--radius-interactive)] bg-[var(--surface-subtle)] text-[var(--text-primary)] hover:bg-[var(--primary-light)] disabled:opacity-50 disabled:cursor-not-allowed transition-colors flex items-center justify-center gap-2"
             >
               <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
                 <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" />
@@ -94,7 +113,7 @@ export default function ProfilePage() {
 
         {/* Placeholders for Future Features */}
         <section className="opacity-60 grayscale hover:grayscale-0 transition-all duration-300">
-          <div className="bg-[var(--surface-muted)] p-6 rounded-[var(--radius-container)] border border-[var(--border-subtle)] border-dashed mb-4">
+          <div className="bg-[var(--surface-muted)] p-6 rounded-[var(--radius-container)] mb-4">
              <div className="flex items-center justify-between mb-2">
                <h2 className="text-xl font-semibold text-[var(--text-secondary)]">Manage Groups</h2>
                <span className="text-xs font-medium px-2 py-1 bg-[var(--surface-subtle)] rounded-full text-[var(--text-muted)]">Coming Soon</span>
@@ -102,7 +121,7 @@ export default function ProfilePage() {
              <p className="text-sm text-[var(--text-muted)]">Create and manage private groups for shared goals.</p>
           </div>
           
-          <div className="bg-[var(--surface-muted)] p-6 rounded-[var(--radius-container)] border border-[var(--border-subtle)] border-dashed">
+          <div className="bg-[var(--surface-muted)] p-6 rounded-[var(--radius-container)]">
              <div className="flex items-center justify-between mb-2">
                <h2 className="text-xl font-semibold text-[var(--text-secondary)]">Tested Methods Archive</h2>
                <span className="text-xs font-medium px-2 py-1 bg-[var(--surface-subtle)] rounded-full text-[var(--text-muted)]">Coming Soon</span>

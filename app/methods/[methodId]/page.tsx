@@ -9,6 +9,9 @@ import { Method, Review, TPFEvent } from '@/types';
 import { collection, getDocs, addDoc, doc, getDoc, serverTimestamp, updateDoc, query, where, orderBy, setDoc, deleteDoc, increment } from 'firebase/firestore';
 import { db } from '@/src/lib/firebase/config';
 import { EventCard } from '@/components';
+import { ReviewTrends } from '@/components/features/ReviewTrends';
+import { ReviewCard } from '@/components/features/ReviewCard';
+import { StarRatingInput } from '@/components/ui/StarRatingInput';
 import { getNextEventOccurrence } from '@/lib/utils/eventUtils';
 
 type PageParams = Promise<{ methodId: string }>;
@@ -53,9 +56,13 @@ function MethodDetailContent({ params }: { params: PageParams }) {
   
   // Initialize active tab from URL param
   const tabParam = searchParams.get('tab');
-  const initialTab = tabParam === 'reviews' ? 'reviews' : tabParam === 'events' ? 'events' : 'resources';
-  const [activeTab, setActiveTab] = useState<'resources' | 'reviews' | 'events'>(initialTab);
+  const isPrivateMode = searchParams.get('private') === 'true';
+  const initialTab = tabParam === 'reviews' ? 'reviews' : tabParam === 'events' ? 'events' : tabParam === 'trends' ? 'trends' : 'resources';
+  const [activeTab, setActiveTab] = useState<'resources' | 'reviews' | 'events' | 'trends'>(initialTab as any);
   const [isLoading, setIsLoading] = useState(true);
+  
+  // Journey Modal
+  const [journeyUserId, setJourneyUserId] = useState<string | null>(null);
   
   // Review form
   const [showReviewForm, setShowReviewForm] = useState(false);
@@ -355,7 +362,7 @@ function MethodDetailContent({ params }: { params: PageParams }) {
   
   if (authLoading || isLoading) {
     return (
-      <div className="min-h-screen bg-[var(--background)] flex items-center justify-center">
+      <div className={`min-h-screen ${isPrivateMode ? 'cave-mode' : 'bg-[var(--background)]'} flex items-center justify-center`}>
         <div className="text-[var(--text-muted)]">Loading...</div>
       </div>
     );
@@ -363,7 +370,7 @@ function MethodDetailContent({ params }: { params: PageParams }) {
   
   if (!method) {
     return (
-      <div className="min-h-screen bg-[var(--background)] flex items-center justify-center">
+      <div className={`min-h-screen ${isPrivateMode ? 'cave-mode' : 'bg-[var(--background)]'} flex items-center justify-center`}>
         <div className="text-center">
           <div className="text-6xl mb-4">🔍</div>
           <h2 className="text-xl font-bold text-[var(--text-primary)]">Method not found</h2>
@@ -376,8 +383,8 @@ function MethodDetailContent({ params }: { params: PageParams }) {
   }
   
   return (
-    <div className="min-h-screen bg-[var(--background)]">
-      <Header />
+    <div className={`min-h-screen ${isPrivateMode ? 'cave-mode' : 'bg-[var(--background)]'}`}>
+      <Header currentPage={isPrivateMode ? 'my-cave' : 'other'} />
       
       {/* Content */}
       <main className="container py-8">
@@ -515,10 +522,10 @@ function MethodDetailContent({ params }: { params: PageParams }) {
         )}
         
         {/* Tabs */}
-        <div className="flex gap-2 mb-8 p-1 bg-[var(--surface-subtle)] rounded-[var(--radius-interactive)]">
+        <div className="flex gap-2 mb-8 p-1 bg-[var(--surface-subtle)] rounded-[var(--radius-interactive)] overflow-x-auto">
           <button
             onClick={() => setActiveTab('resources')}
-            className={`flex-1 py-3 px-6 text-base font-medium rounded-[var(--radius-interactive)] transition-all cursor-pointer ${
+            className={`flex-1 py-3 px-6 text-base font-medium rounded-[var(--radius-interactive)] transition-all cursor-pointer whitespace-nowrap ${
               activeTab === 'resources'
                 ? 'bg-white shadow-sm text-[var(--primary)]'
                 : 'text-[var(--text-secondary)] hover:bg-[var(--surface-muted)]'
@@ -528,7 +535,7 @@ function MethodDetailContent({ params }: { params: PageParams }) {
           </button>
           <button
             onClick={() => setActiveTab('reviews')}
-            className={`flex-1 py-3 px-6 text-base font-medium rounded-[var(--radius-interactive)] transition-all cursor-pointer ${
+            className={`flex-1 py-3 px-6 text-base font-medium rounded-[var(--radius-interactive)] transition-all cursor-pointer whitespace-nowrap ${
               activeTab === 'reviews'
                 ? 'bg-white shadow-sm text-[var(--primary)]'
                 : 'text-[var(--text-secondary)] hover:bg-[var(--surface-muted)]'
@@ -537,8 +544,18 @@ function MethodDetailContent({ params }: { params: PageParams }) {
             Reviews ({reviews.length})
           </button>
           <button
+            onClick={() => setActiveTab('trends')}
+            className={`flex-1 py-3 px-6 text-base font-medium rounded-[var(--radius-interactive)] transition-all cursor-pointer whitespace-nowrap ${
+              activeTab === 'trends'
+                ? 'bg-white shadow-sm text-[var(--primary)]'
+                : 'text-[var(--text-secondary)] hover:bg-[var(--surface-muted)]'
+            }`}
+          >
+            Trends 📈
+          </button>
+          <button
             onClick={() => setActiveTab('events')}
-            className={`flex-1 py-3 px-6 text-base font-medium rounded-[var(--radius-interactive)] transition-all cursor-pointer ${
+            className={`flex-1 py-3 px-6 text-base font-medium rounded-[var(--radius-interactive)] transition-all cursor-pointer whitespace-nowrap ${
               activeTab === 'events'
                 ? 'bg-white shadow-sm text-[var(--primary)]'
                 : 'text-[var(--text-secondary)] hover:bg-[var(--surface-muted)]'
@@ -639,22 +656,11 @@ function MethodDetailContent({ params }: { params: PageParams }) {
                       <label className="block text-sm font-medium text-[var(--text-primary)] mb-2">
                         Your Rating
                       </label>
-                      <div className="flex gap-2">
-                        {[1, 2, 3, 4, 5].map((score) => (
-                          <button
-                            key={score}
-                            type="button"
-                            onClick={() => setReviewScore(score)}
-                            className={`w-12 h-12 rounded-[var(--radius-interactive)] text-2xl transition-all flex items-center justify-center cursor-pointer ${
-                              score <= reviewScore
-                                ? 'bg-[var(--accent)] text-white shadow-sm'
-                                : 'bg-[var(--surface-subtle)] text-[var(--text-muted)] hover:bg-[var(--accent-muted)] hover:text-[var(--accent)]'
-                            }`}
-                          >
-                            ★
-                          </button>
-                        ))}
-                      </div>
+                      <StarRatingInput 
+                        value={reviewScore} 
+                        onChange={setReviewScore} 
+                        size="md"
+                      />
                       {reviewScore === 0 && (
                         <p className="text-sm text-red-500 mt-1 italic">Please select a rating</p>
                       )}
@@ -689,37 +695,27 @@ function MethodDetailContent({ params }: { params: PageParams }) {
             ) : (
               <div className="space-y-4">
                 {reviews.map((review) => (
-                  <Card key={review.id}>
-                    <CardContent className="pt-4">
-                      <div className="flex items-center gap-2 mb-3">
-                        <div className="flex">
-                          {[1, 2, 3, 4, 5].map((score) => (
-                            <span
-                              key={score}
-                              className={score <= review.score ? 'text-[var(--accent)]' : 'text-[var(--surface-hover)]'}
-                            >
-                              ★
-                            </span>
-                          ))}
-                        </div>
-                        <span className="text-sm text-[var(--text-muted)]">
-                          {review.createdAt.toLocaleDateString()}
-                        </span>
-                        {review.metMinimum && (
-                          <span className="text-xs px-2 py-0.5 bg-[var(--secondary)] text-white rounded-full">
-                            ✓ Verified
-                          </span>
-                        )}
-                      </div>
-                      <p className="text-[var(--text-secondary)]">
-                        {review.content}
-                      </p>
-                    </CardContent>
-                  </Card>
+                  <ReviewCard 
+                     key={review.id} 
+                     review={review} 
+                     onViewJourney={(uid) => setJourneyUserId(uid)}
+                  />
                 ))}
               </div>
             )}
           </div>
+        )}
+
+        {activeTab === 'trends' && (
+             <div className="animate-fade-in">
+                 {reviews.length === 0 ? (
+                    <div className="text-center py-12 border border-dashed border-[var(--border-subtle)] rounded-xl">
+                        <p className="text-[var(--text-muted)]">Not enough data to calculate trends yet.</p>
+                    </div>
+                 ) : (
+                    <ReviewTrends reviews={reviews} />
+                 )}
+             </div>
         )}
         
         {activeTab === 'events' && (
@@ -750,6 +746,21 @@ function MethodDetailContent({ params }: { params: PageParams }) {
           </div>
         )}
       </main>
+
+      {/* Journey Modal */}
+      {journeyUserId && (
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center p-4 z-50 animate-fade-in">
+           <div className="bg-[var(--background)] rounded-xl w-full max-w-2xl max-h-[90vh] overflow-y-auto">
+               <div className="p-4 border-b border-[var(--border-subtle)] flex justify-between items-center sticky top-0 bg-[var(--background)] z-10">
+                   <h2 className="text-lg font-bold">User Journey</h2>
+                   <button onClick={() => setJourneyUserId(null)} className="text-[var(--text-muted)] hover:text-[var(--text-primary)]">✕</button>
+               </div>
+               <div className="p-6">
+                   <ReviewTrends reviews={reviews} currentUserId={journeyUserId} />
+               </div>
+           </div>
+        </div>
+      )}
     </div>
   );
 }

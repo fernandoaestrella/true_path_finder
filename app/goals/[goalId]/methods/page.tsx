@@ -1,8 +1,8 @@
 'use client';
 
-import React, { useState, useEffect, use } from 'react';
+import React, { useState, useEffect, use, Suspense } from 'react';
 import Link from 'next/link';
-import { useRouter } from 'next/navigation';
+import { useRouter, useSearchParams } from 'next/navigation';
 import { Button, Input, Textarea, Card, CardHeader, CardTitle, CardContent, CardFooter, Header } from '@/components';
 import { useAuth } from '@/lib/contexts/AuthContext';
 import { Method, Goal, Resource, SuggestedMinimum } from '@/types';
@@ -11,10 +11,14 @@ import { db } from '@/src/lib/firebase/config';
 
 type PageParams = Promise<{ goalId: string }>;
 
-export default function MethodsPage({ params }: { params: PageParams }) {
+function MethodsPageContent({ params }: { params: PageParams }) {
   const { goalId } = use(params);
   const router = useRouter();
+  const searchParams = useSearchParams();
   const { user, isLoading: authLoading } = useAuth();
+  
+  // Private mode from query param
+  const isPrivateMode = searchParams.get('private') === 'true';
   
   const [goal, setGoal] = useState<Goal | null>(null);
   const [methods, setMethods] = useState<Method[]>([]);
@@ -159,6 +163,7 @@ export default function MethodsPage({ params }: { params: PageParams }) {
         createdBy: user.uid,
         createdAt: serverTimestamp(),
         stats: { activeUsers: 1, avgRating: 0, reviewCount: 0 },
+        isPrivate: isPrivateMode,
       });
       
       // Add to local state
@@ -215,15 +220,15 @@ export default function MethodsPage({ params }: { params: PageParams }) {
   
   if (authLoading || isLoading) {
     return (
-      <div className="min-h-screen bg-[var(--background)] flex items-center justify-center">
+      <div className={`min-h-screen ${isPrivateMode ? 'cave-mode' : 'bg-[var(--background)]'} flex items-center justify-center`}>
         <div className="text-[var(--text-muted)]">Loading...</div>
       </div>
     );
   }
   
   return (
-    <div className="min-h-screen bg-[var(--background)]">
-      <Header />
+    <div className={`min-h-screen ${isPrivateMode ? 'cave-mode' : 'bg-[var(--background)]'}`}>
+      <Header currentPage={isPrivateMode ? 'my-cave' : 'other'} />
       
       {/* Main Content */}
       <main className="container py-8">
@@ -420,7 +425,7 @@ export default function MethodsPage({ params }: { params: PageParams }) {
                   <CardFooter>
                     <div className="flex gap-2">
                       <Link
-                        href={`/methods/${method.id}`}
+                        href={`/methods/${method.id}${isPrivateMode ? '?private=true' : ''}`}
                         className="flex-1 btn btn-secondary text-sm py-2 text-center"
                       >
                         View Details
@@ -441,5 +446,13 @@ export default function MethodsPage({ params }: { params: PageParams }) {
         )}
       </main>
     </div>
+  );
+}
+
+export default function MethodsPage({ params }: { params: PageParams }) {
+  return (
+    <Suspense fallback={<div className="min-h-screen bg-[var(--background)]" />}>
+      <MethodsPageContent params={params} />
+    </Suspense>
   );
 }

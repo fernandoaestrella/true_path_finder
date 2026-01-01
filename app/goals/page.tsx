@@ -1,7 +1,7 @@
 'use client';
 
-import React, { useState, useEffect } from 'react';
-import { useRouter } from 'next/navigation';
+import React, { useState, useEffect, Suspense } from 'react';
+import { useRouter, useSearchParams } from 'next/navigation';
 import { Button, Input, Textarea, Card, CardHeader, CardTitle, CardContent, Header } from '@/components';
 import { useAuth } from '@/lib/contexts/AuthContext';
 import { useUserData } from '@/lib/contexts/UserDataContext';
@@ -13,13 +13,22 @@ type GoalWithStats = Goal & {
   methodCount: number;
 };
 
-export default function GoalsPage() {
+function GoalsPageContent() {
   const { user, isLoading: authLoading } = useAuth();
   const { chosenGoals, refreshUserData, allGoals, isLoading: contextLoading } = useUserData();
   const router = useRouter();
+  const searchParams = useSearchParams();
+  
+  // Private mode from query param
+  const isPrivateMode = searchParams.get('private') === 'true';
+  
+  // Filter by private mode first
+  const modeFilteredGoals = allGoals.filter(g => 
+    isPrivateMode ? g.isPrivate === true : g.isPrivate !== true
+  );
   
   const [goals, setGoals] = useState<GoalWithStats[]>(
-    allGoals.map(g => ({ ...g, methodCount: 0 }))
+    modeFilteredGoals.map(g => ({ ...g, methodCount: 0 }))
   );
   const [chosenGoalIds, setChosenGoalIds] = useState<Set<string>>(new Set());
   
@@ -50,24 +59,23 @@ export default function GoalsPage() {
 
   // Update loading state when context finishes or goals arrive
   useEffect(() => {
-      if (allGoals.length > 0 || !contextLoading) {
+      if (modeFilteredGoals.length > 0 || !contextLoading) {
           setIsLoading(false);
       }
       
-      // Update local goals if context allGoals updates (and we haven't already with same data)
-      // This is basic sync. 
-      if (allGoals.length > 0 && goals.length === 0) {
-          setGoals(allGoals.map(g => ({ ...g, methodCount: 0 })));
+      // Update local goals if context allGoals updates
+      if (modeFilteredGoals.length >= 0) {
+          setGoals(modeFilteredGoals.map(g => ({ ...g, methodCount: 0 })));
       }
-  }, [allGoals, contextLoading, goals.length]);
+  }, [allGoals, contextLoading, isPrivateMode]);
   
   // Fetch method counts in background
   useEffect(() => {
-    if (!user || allGoals.length === 0) return;
+    if (!user || modeFilteredGoals.length === 0) return;
     
     const fetchCounts = async () => {
       try {
-        const updatedGoals = await Promise.all(allGoals.map(async (goal) => {
+        const updatedGoals = await Promise.all(modeFilteredGoals.map(async (goal) => {
            const methodsRef = collection(db, 'methods');
            const q = query(methodsRef, where('goalId', '==', goal.id));
            const snapshot = await getCountFromServer(q);
@@ -84,7 +92,7 @@ export default function GoalsPage() {
     };
     
     fetchCounts();
-  }, [user, allGoals]);
+  }, [user, allGoals, isPrivateMode]);
 
   /* 
      If context is completely empty (first load ever), we might need to trigger refresh?
@@ -147,6 +155,7 @@ export default function GoalsPage() {
         createdBy: user.uid,
         createdAt: serverTimestamp(),
         groupId: 'general',
+        isPrivate: isPrivateMode,
       });
       
       // Add to local state
@@ -157,6 +166,7 @@ export default function GoalsPage() {
         createdBy: user.uid,
         createdAt: new Date(),
         groupId: 'general',
+        isPrivate: isPrivateMode,
       };
       
       setGoals(prev => [{ ...newGoal, methodCount: 0 }, ...prev]);
@@ -194,8 +204,8 @@ export default function GoalsPage() {
   }
   
   return (
-    <div className="min-h-screen bg-[var(--background)]">
-      <Header currentPage="goals" />
+    <div className={`min-h-screen ${isPrivateMode ? 'cave-mode' : 'bg-[var(--background)]'}`}>
+      <Header currentPage={isPrivateMode ? 'my-cave' : 'goals'} />
       
       {/* Main Content */}
       <main className="container py-8 mt-8">
@@ -296,7 +306,8 @@ export default function GoalsPage() {
                       <button
                         onClick={(e) => {
                           e.stopPropagation();
-                          router.push(`/goals/${goal.id}/methods`);
+                          const privateParam = isPrivateMode ? '?private=true' : '';
+                          router.push(`/goals/${goal.id}/methods${privateParam}`);
                         }}
                         className="text-sm text-[var(--primary)] hover:underline bg-transparent border-none p-0 cursor-pointer"
                       >
@@ -319,5 +330,13 @@ export default function GoalsPage() {
         </div>
       </main>
     </div>
+  );
+}
+
+export default function GoalsPage() {
+  return (
+    <Suspense fallback={<div className="min-h-screen bg-[var(--background)]" />}>
+      <GoalsPageContent />
+    </Suspense>
   );
 }

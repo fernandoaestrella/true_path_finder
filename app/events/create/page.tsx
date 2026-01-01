@@ -115,8 +115,9 @@ function CreateEventContent() {
   const { user } = useAuth();
   const [isSubmitting, setIsSubmitting] = useState(false);
   
-  // Get methodId from URL
+  // Get methodId and private mode from URL
   const methodIdFromUrl = searchParams.get('methodId') || '';
+  const isPrivateMode = searchParams.get('private') === 'true';
   
   // Initial state for form
   const initialFormState: EventFormData = {
@@ -209,6 +210,7 @@ function CreateEventContent() {
         repeatability: formData.repeatability,
         createdBy: user.uid,
         createdAt: serverTimestamp(),
+        isPrivate: isPrivateMode,
       };
 
       await addDoc(collection(db, 'events'), eventData);
@@ -216,8 +218,9 @@ function CreateEventContent() {
       // Clear persistence
       clearFormData();
 
-      // Redirect back to method page with events tab
-      router.push(`/methods/${formData.methodId}?tab=events`);
+      // Redirect back to method page with events tab (preserve private mode)
+      const privateParam = isPrivateMode ? '&private=true' : '';
+      router.push(`/methods/${formData.methodId}?tab=events${privateParam}`);
     } catch (error) {
       console.error('Error creating event:', error);
       alert('Failed to create event. Please try again.');
@@ -227,8 +230,8 @@ function CreateEventContent() {
   };
 
   return (
-    <div className="min-h-screen bg-[var(--background)]">
-      <Header />
+    <div className={`min-h-screen ${isPrivateMode ? 'cave-mode' : 'bg-[var(--background)]'}`}>
+      <Header currentPage={isPrivateMode ? 'my-cave' : 'other'} />
 
       <div className="container py-8">
         <h1 className="text-3xl font-bold text-[var(--text-primary)] mb-2">Create Event</h1>

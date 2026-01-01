@@ -29,6 +29,7 @@
   --surface-emphasis: #E9ECEF;
   --surface-hover: #DEE2E6;
   --surface-dark: #E2E8F0;
+  --background-cave: #F5F6F8; /* Slightly darker for My Cave */
   --border: transparent; /* strictly no borders */
   
   /* Text - Much better contrast */
@@ -302,4 +303,9 @@ h4 { font-size: 1.125rem; }
 
 .animate-pulse-soft {
   animation: pulse-soft 2s ease-in-out infinite;
+}
+
+/* My Cave Mode */
+.cave-mode {
+  background: var(--background-cave);
 }

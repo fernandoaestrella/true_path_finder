@@ -29,6 +29,7 @@ export interface Goal {
   createdBy: string;
   createdAt: Date;
   groupId: string; // 'general' or private group ID
+  isPrivate?: boolean; // true = My Cave content
 }
 
 export interface ChosenGoal {
@@ -67,6 +68,7 @@ export interface Method {
   createdBy: string;
   createdAt: Date;
   stats: MethodStats;
+  isPrivate?: boolean; // true = My Cave content
 }
 
 export interface Attempt {
@@ -102,6 +104,7 @@ export interface Review {
   metMinimum: boolean;
   createdAt: Date;
   updatedAt: Date;
+  isPrivate?: boolean; // true = My Cave content
 }
 
 // ============================================================================
@@ -129,6 +132,7 @@ export interface TPFEvent {
   maxPerBatch: number;
   repeatability?: RepeatabilityConfig;
   createdBy: string;
+  isPrivate?: boolean; // true = My Cave content
 }
 
 export interface EventBatch {

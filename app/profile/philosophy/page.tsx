@@ -4,12 +4,18 @@ import React from 'react';
 import { useRouter } from 'next/navigation';
 import { OnboardingFlow } from '@/components/features/OnboardingFlow';
 
-export default function OnboardingPage() {
+export default function PhilosophyPage() {
   const router = useRouter();
   
+  const handleExit = () => {
+    router.push('/profile');
+  };
+
   return (
     <OnboardingFlow 
-      onComplete={() => router.push('/signup')} 
+      onComplete={handleExit}
+      onExit={handleExit}
+      actionLabel="Return to Profile"
     />
   );
 }
