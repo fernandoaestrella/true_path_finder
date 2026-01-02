@@ -372,7 +372,7 @@ function MethodDetailContent({ params }: { params: PageParams }) {
     return (
       <div className={`min-h-screen ${isPrivateMode ? 'cave-mode' : 'bg-[var(--background)]'} flex items-center justify-center`}>
         <div className="text-center">
-          <div className="text-6xl mb-4">🔍</div>
+          <div className="text-6xl mb-4">?</div>
           <h2 className="text-xl font-bold text-[var(--text-primary)]">Method not found</h2>
           <Link href="/goals" className="text-[var(--primary)] hover:underline mt-4 inline-block">
             ← Back to Goals
@@ -551,7 +551,7 @@ function MethodDetailContent({ params }: { params: PageParams }) {
                 : 'text-[var(--text-secondary)] hover:bg-[var(--surface-muted)]'
             }`}
           >
-            Trends 📈
+            Trends
           </button>
           <button
             onClick={() => setActiveTab('events')}
@@ -570,7 +570,6 @@ function MethodDetailContent({ params }: { params: PageParams }) {
           <div className="animate-fade-in">
             {method.resources.length === 0 ? (
               <div className="text-center py-12">
-                <div className="text-5xl mb-4">📚</div>
                 <p className="text-[var(--text-muted)]">No resources added yet</p>
               </div>
             ) : (
@@ -689,7 +688,6 @@ function MethodDetailContent({ params }: { params: PageParams }) {
             {/* Reviews List */}
             {reviews.length === 0 ? (
               <div className="text-center py-12">
-                <div className="text-5xl mb-4">💬</div>
                 <p className="text-[var(--text-muted)]">No reviews yet. Be the first!</p>
               </div>
             ) : (
@@ -709,7 +707,7 @@ function MethodDetailContent({ params }: { params: PageParams }) {
         {activeTab === 'trends' && (
              <div className="animate-fade-in">
                  {reviews.length === 0 ? (
-                    <div className="text-center py-12 border border-dashed border-[var(--border-subtle)] rounded-xl">
+                    <div className="text-center py-12">
                         <p className="text-[var(--text-muted)]">Not enough data to calculate trends yet.</p>
                     </div>
                  ) : (
@@ -723,23 +721,19 @@ function MethodDetailContent({ params }: { params: PageParams }) {
             {/* Create Event Button */}
             <div className="mb-6">
               <Button onClick={() => router.push(`/events/create?methodId=${methodId}`)}>
-                ➕ Create Event
+                + Create Event
               </Button>
             </div>
             
             {/* Events List */}
             {events.length === 0 ? (
               <div className="text-center py-12">
-                <div className="text-5xl mb-4">📅</div>
-                <p className="text-[var(--text-muted)] mb-4">No upcoming events</p>
-                <Button onClick={() => router.push(`/events/create?methodId=${methodId}`)}>
-                  Create the First Event
-                </Button>
+                <p className="text-[var(--text-muted)]">No upcoming events</p>
               </div>
             ) : (
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 {events.map((event) => (
-                  <EventCard key={event.id} event={event} />
+                  <EventCard key={event.id} event={event} isPrivateMode={isPrivateMode} />
                 ))}
               </div>
             )}

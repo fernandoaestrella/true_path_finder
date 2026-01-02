@@ -51,6 +51,16 @@ function DashboardContent() {
   const handleRsvpRefresh = async () => {
      await refreshUserData();
   };
+
+  // Filter out private content for public dashboard
+  const publicMethodsByGoal = methodsByGoal
+    .map(group => ({
+      goal: group.goal,
+      methods: group.methods.filter(m => m.isPrivate !== true)
+    }))
+    .filter(group => group.goal.isPrivate !== true && group.methods.length > 0);
+
+  const publicEvents = myEvents.filter(e => e.isPrivate !== true);
   
   // Show loading state only during initial auth check or if data is loading AND we have no data yet
   if (authLoading || (dataLoading && methodsByGoal.length === 0)) {
@@ -142,14 +152,14 @@ function DashboardContent() {
             </div>
             
             <MethodsGrid
-              methodsByGoal={methodsByGoal}
+              methodsByGoal={publicMethodsByGoal}
               onWriteReview={handleWriteReview}
               onViewResources={handleViewResources}
             />
         </section>
 
         {/* My Upcoming Events Section */}
-        {myEvents.length > 0 && (
+        {publicEvents.length > 0 && (
              <section className="animate-fade-in">
                 <div className="mb-8 text-center border-t pt-12 border-[var(--border)]">
                    <h2 className="text-2xl font-semibold text-[var(--text-primary)]">
@@ -161,7 +171,7 @@ function DashboardContent() {
                 </div>
                 
                 <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                   {myEvents.map((event) => (
+                   {publicEvents.map((event) => (
                       <EventCard 
                          key={event.id} 
                          event={event} 

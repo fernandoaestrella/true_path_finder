@@ -418,7 +418,7 @@ function MethodsPageContent({ params }: { params: PageParams }) {
                         <span>{method.stats.activeUsers} trying</span>
                       </div>
                       <div className="flex items-center gap-1 text-xs">
-                        <span>{method.suggestedMinimum.value} {method.suggestedMinimum.type}</span>
+                        <span>Try {method.suggestedMinimum.value} {method.suggestedMinimum.type}</span>
                       </div>
                     </div>
                   </CardContent>

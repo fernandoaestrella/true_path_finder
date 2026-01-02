@@ -14,29 +14,27 @@ interface PhaseIndicatorProps {
 
   elapsedSeconds: number;
   isEventStarted?: boolean;
+  isPrivateMode?: boolean;
 }
 
-export default function PhaseIndicator({ currentPhase, phases, elapsedSeconds, isEventStarted = true }: PhaseIndicatorProps) {
+export default function PhaseIndicator({ currentPhase, phases, elapsedSeconds, isEventStarted = true, isPrivateMode = false }: PhaseIndicatorProps) {
   const phaseData = [
     {
       name: 'Arrival',
       key: 'arrival' as Phase,
       description: 'Welcome, Introductions & Questions',
-      icon: '👋',
       color: 'soft-blue',
     },
     {
       name: 'Practice',
       key: 'practice' as Phase,
       description: 'Focused Work',
-      icon: '🧘',
       color: 'sage-green',
     },
     {
       name: 'Close',
       key: 'close' as Phase,
       description: 'Reflection & Goodbye',
-      icon: '🙏',
       color: 'soft-blue',
     },
   ];
@@ -143,7 +141,7 @@ export default function PhaseIndicator({ currentPhase, phases, elapsedSeconds, i
                 >
                   {phase.name}
                 </div>
-                <div className="text-sm text-gray-500">{phase.description}</div>
+                {!isPrivateMode && <div className="text-sm text-gray-500">{phase.description}</div>}
                 
                 {/* Current Phase Timer */}
                 {currentPhase === phase.key && isEventStarted && (
@@ -186,28 +184,30 @@ export default function PhaseIndicator({ currentPhase, phases, elapsedSeconds, i
             )}
           </React.Fragment>
         ))}
-      </div>
+    </div>
       
-      {/* Chat Status Indicator */}
-      <div className="text-center p-4 rounded-[var(--radius-interactive)] bg-[var(--surface-muted)]">
-        {isEventStarted ? (
-          currentPhase === 'practice' ? (
-            <div className="flex items-center justify-center gap-2 text-[var(--text-secondary)]">
-              <span className="w-3 h-3 rounded-full bg-[var(--text-muted)]"></span>
-              <span className="font-medium">Text chat is disabled during practice</span>
-            </div>
+      {/* Chat Status Indicator - hidden in private mode */}
+      {!isPrivateMode && (
+        <div className="text-center p-4 rounded-[var(--radius-interactive)] bg-[var(--surface-muted)]">
+          {isEventStarted ? (
+            currentPhase === 'practice' ? (
+              <div className="flex items-center justify-center gap-2 text-[var(--text-secondary)]">
+                <span className="w-3 h-3 rounded-full bg-[var(--text-muted)]"></span>
+                <span className="font-medium">Text chat is disabled during practice</span>
+              </div>
+            ) : (
+              <div className="flex items-center justify-center gap-2 text-[var(--primary)]">
+                <span className="w-3 h-3 rounded-full bg-[var(--primary)] animate-pulse"></span>
+                <span className="font-medium">Text chat is active</span>
+              </div>
+            )
           ) : (
-            <div className="flex items-center justify-center gap-2 text-[var(--primary)]">
-              <span className="w-3 h-3 rounded-full bg-[var(--primary)] animate-pulse"></span>
-              <span className="font-medium">Text chat is active</span>
+            <div className="flex items-center justify-center gap-2 text-[var(--text-secondary)]">
+              <span className="font-medium">Event not started</span>
             </div>
-          )
-        ) : (
-          <div className="flex items-center justify-center gap-2 text-[var(--text-secondary)]">
-            <span className="font-medium">Event not started</span>
-          </div>
-        )}
-      </div>
+          )}
+        </div>
+      )}
     </div>
   );
 }

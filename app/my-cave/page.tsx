@@ -38,11 +38,11 @@ function MyCaveContent() {
   const privateEvents = myEvents.filter(e => e.isPrivate === true);
   
   const handleWriteReview = (methodId: string) => {
-    router.push(`/methods/${methodId}?tab=reviews`);
+    router.push(`/methods/${methodId}?private=true&tab=reviews`);
   };
   
   const handleViewResources = (methodId: string) => {
-    router.push(`/methods/${methodId}`);
+    router.push(`/methods/${methodId}?private=true`);
   };
 
   const handleRsvpRefresh = async () => {
@@ -154,6 +154,7 @@ function MyCaveContent() {
                 methodsByGoal={privateMethodsByGoal}
                 onWriteReview={handleWriteReview}
                 onViewResources={handleViewResources}
+                isPrivateMode={true}
               />
             ) : (
               <div className="text-center py-12 text-[var(--text-muted)]">
@@ -181,6 +182,7 @@ function MyCaveContent() {
                          key={event.id} 
                          event={event} 
                          onRsvpChange={handleRsvpRefresh}
+                         isPrivateMode={true}
                       />
                    ))}
                 </div>

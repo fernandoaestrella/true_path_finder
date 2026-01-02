@@ -148,8 +148,8 @@ function LimitReachedContent() {
       <div className="max-w-md w-full text-center space-y-8">
         
         {/* Icon / Visual */}
-        <div className="text-6xl mb-6">
-          🌙
+        <div className="text-6xl mb-6 text-[var(--text-muted)]">
+          ~
         </div>
         
         {/* Main Message */}
@@ -173,7 +173,7 @@ function LimitReachedContent() {
           </p>
            <div className="mt-4 pt-4 shadow-[0_-1px_0_var(--surface-emphasis)]">
               <p className="text-sm font-medium text-[var(--primary)]">
-                💡 Note: Scheduled Events are exempt from this limit.
+                Note: Scheduled Events are exempt from this limit.
               </p>
               <p className="text-xs text-[var(--text-secondary)] mt-1">
                 You can still join community events even if your daily timer is up.
@@ -245,7 +245,7 @@ function LimitReachedContent() {
               className="w-full opacity-50 hover:opacity-100"
               variant="secondary"
             >
-              🔧 Debug: Reset Timer
+              Debug: Reset Timer
             </Button>
           )}
         </div>

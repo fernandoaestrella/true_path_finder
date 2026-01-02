@@ -12,9 +12,10 @@ import { db } from '@/src/lib/firebase/config';
 interface EventCardProps {
   event: TPFEvent;
   onRsvpChange?: () => void; // Callback to refresh parent list
+  isPrivateMode?: boolean;
 }
 
-export default function EventCard({ event, onRsvpChange }: EventCardProps) {
+export default function EventCard({ event, onRsvpChange, isPrivateMode = false }: EventCardProps) {
   const router = useRouter();
   const { user } = useAuth();
   const [isRsvped, setIsRsvped] = React.useState(false);
@@ -117,7 +118,8 @@ export default function EventCard({ event, onRsvpChange }: EventCardProps) {
   };
 
   const handleJoinEvent = () => {
-    router.push(`/events/${event.id}`);
+    const privateParam = isPrivateMode ? '?private=true' : '';
+    router.push(`/events/${event.id}${privateParam}`);
   };
 
   if (!nextOccurrence) return null; // Don't show ended events?

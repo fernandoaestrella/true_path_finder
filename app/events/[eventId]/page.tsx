@@ -1,13 +1,14 @@
 'use client';
 
-import React, { useState, useEffect, useRef } from 'react';
-import { useParams, useRouter } from 'next/navigation';
+import React, { useState, useEffect, useRef, Suspense } from 'react';
+import { useParams, useRouter, useSearchParams } from 'next/navigation';
 import { doc, getDoc, collection, getDocs, setDoc, updateDoc, deleteDoc, arrayUnion } from 'firebase/firestore';
 import { db } from '@/src/lib/firebase/config';
 import { useAuth } from '@/lib/contexts/AuthContext';
 import { TPFEvent, EventBatch } from '@/types';
 import PhaseIndicator from '@/components/features/PhaseIndicator';
 import ChatPanel from '@/components/features/ChatPanel';
+import EventNotes from '@/components/features/EventNotes';
 import { Button, Card, InfoCard, Header, ResourceCard } from '@/components';
 import { AddToCalendarButton } from 'add-to-calendar-button-react';
 import { getNextEventOccurrence, getEventDurationSeconds } from '@/lib/utils/eventUtils';
@@ -87,11 +88,15 @@ const EditButton = ({ eventId, isStarted }: { eventId: string, isStarted: boolea
 
 type Phase = 'arrival' | 'practice' | 'close' | 'ended';
 
-export default function EventPage() {
+function EventPageContent() {
   const params = useParams();
   const router = useRouter();
+  const searchParams = useSearchParams();
   const { user } = useAuth();
   const eventId = params.eventId as string;
+  
+  // Private mode from query param
+  const isPrivateMode = searchParams.get('private') === 'true';
   
   const lastOccurrenceRef = useRef<number | null>(null);
   
@@ -327,7 +332,7 @@ export default function EventPage() {
 
   if (isLoading) {
     return (
-      <div className="min-h-screen bg-[var(--background)] flex items-center justify-center">
+      <div className={`min-h-screen ${isPrivateMode ? 'cave-mode' : 'bg-[var(--background)]'} flex items-center justify-center`}>
         <div className="text-xl text-[var(--text-secondary)]">Loading event...</div>
       </div>
     );
@@ -335,7 +340,7 @@ export default function EventPage() {
 
   if (!event) {
     return (
-      <div className="min-h-screen bg-[var(--background)] flex items-center justify-center">
+      <div className={`min-h-screen ${isPrivateMode ? 'cave-mode' : 'bg-[var(--background)]'} flex items-center justify-center`}>
         <InfoCard className="max-w-md">
           <h1 className="text-2xl font-bold text-[var(--text-primary)] mb-4">Event Not Found</h1>
           <p className="text-[var(--text-secondary)] mb-6">This event does not exist or has been deleted.</p>
@@ -350,8 +355,8 @@ export default function EventPage() {
   const isChatEnabled = currentPhase === 'arrival' || currentPhase === 'close';
 
   return (
-    <div className="min-h-screen bg-[var(--background)]">
-      <Header />
+    <div className={`min-h-screen ${isPrivateMode ? 'cave-mode' : 'bg-[var(--background)]'}`}>
+      <Header currentPage={isPrivateMode ? 'my-cave' : 'other'} />
 
       <div className="container py-8">
         {/* Event Header */}
@@ -451,13 +456,19 @@ export default function EventPage() {
             phases={event.phases}
             elapsedSeconds={elapsedSeconds}
             isEventStarted={elapsedSeconds >= 0}
+            isPrivateMode={isPrivateMode}
           />
         )}
 
 
 
-        {/* Batch Selection, does not change color on hover */}
-        {currentPhase !== 'ended' && (!selectedBatch || elapsedSeconds < 0) && (
+        {/* Private Mode: Notes instead of batches/chat */}
+        {isPrivateMode && currentPhase !== 'ended' && (
+          <EventNotes eventId={eventId} />
+        )}
+
+        {/* Public Mode: Batch Selection */}
+        {!isPrivateMode && currentPhase !== 'ended' && (!selectedBatch || elapsedSeconds < 0) && (
            <InfoCard className="mb-6">
              {elapsedSeconds < 0 ? (
                <>
@@ -524,8 +535,8 @@ export default function EventPage() {
            </InfoCard>
         )}
 
-        {/* Batch Info */}
-        {selectedBatch && currentPhase !== 'ended' && elapsedSeconds >= 0 && (
+        {/* Public Mode: Batch Info */}
+        {!isPrivateMode && selectedBatch && currentPhase !== 'ended' && elapsedSeconds >= 0 && (
           <InfoCard className="mb-6">
             <p className="text-[var(--text-secondary)]">
               You are in <span className="font-semibold">Batch {selectedBatch}</span>
@@ -533,8 +544,8 @@ export default function EventPage() {
           </InfoCard>
         )}
 
-        {/* Chat Panel - Hidden during practice, and only if batch selected */}
-        {selectedBatch && elapsedSeconds >= 0 && currentPhase === 'arrival' && (
+        {/* Public Mode: Chat Panel - Hidden during practice, and only if batch selected */}
+        {!isPrivateMode && selectedBatch && elapsedSeconds >= 0 && currentPhase === 'arrival' && (
           <ChatPanel
             eventId={eventId}
             batchNumber={selectedBatch}
@@ -542,7 +553,7 @@ export default function EventPage() {
           />
         )}
         
-        {selectedBatch && currentPhase === 'practice' && (
+        {!isPrivateMode && selectedBatch && currentPhase === 'practice' && (
           <InfoCard className="mb-6 text-center py-8">
             <p className="text-[var(--text-secondary)]">
               Text chat is disabled during practice. Focus on your work.
@@ -550,7 +561,7 @@ export default function EventPage() {
           </InfoCard>
         )}
         
-        {selectedBatch && currentPhase === 'close' && (
+        {!isPrivateMode && selectedBatch && currentPhase === 'close' && (
           <ChatPanel
             eventId={eventId}
             batchNumber={selectedBatch}
@@ -559,5 +570,13 @@ export default function EventPage() {
         )}
       </div>
     </div>
+  );
+}
+
+export default function EventPage() {
+  return (
+    <Suspense fallback={<div className="min-h-screen bg-[var(--background)]" />}>
+      <EventPageContent />
+    </Suspense>
   );
 }

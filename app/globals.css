@@ -109,6 +109,7 @@ body {
   line-height: 1.6;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
+  padding-bottom: var(--space-2xl);
 }
 
 /* =============================================================================
@@ -205,10 +206,47 @@ h4 { font-size: 1.125rem; }
 }
 
 /* Form Elements */
+/* Base styles for all input elements - ensures consistent styling */
+input[type="text"],
+input[type="email"],
+input[type="password"],
+input[type="number"],
+input[type="url"],
+input[type="tel"],
+input[type="search"],
+input[type="date"],
+input[type="datetime-local"],
+input[type="time"],
+textarea,
+select {
+  background: var(--surface-muted);
+  border: none;
+  border-radius: var(--radius-interactive);
+  color: var(--text-primary);
+  transition: background-color var(--transition-fast), box-shadow var(--transition-fast);
+}
+
+input[type="text"]:focus,
+input[type="email"]:focus,
+input[type="password"]:focus,
+input[type="number"]:focus,
+input[type="url"]:focus,
+input[type="tel"]:focus,
+input[type="search"]:focus,
+input[type="date"]:focus,
+input[type="datetime-local"]:focus,
+input[type="time"]:focus,
+textarea:focus,
+select:focus {
+  outline: none;
+  background: var(--surface-hover);
+  box-shadow: 0 0 0 3px rgba(184, 212, 232, 0.4);
+}
+
 .input {
   width: 100%;
   padding: var(--space-md) var(--space-lg);
-  background: var(--surface-subtle);
+  background: var(--surface-muted);
   border-radius: var(--radius-interactive);
   font-size: 1rem;
   color: var(--text-primary);
@@ -218,7 +256,7 @@ h4 { font-size: 1.125rem; }
 
 .input:focus {
   outline: none;
-  background: var(--surface-muted);
+  background: var(--surface-hover);
   box-shadow: 0 0 0 3px rgba(184, 212, 232, 0.4);
 }
 

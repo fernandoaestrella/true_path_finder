@@ -16,9 +16,11 @@ interface MethodCardProps {
   goalTitle: string;
   onWriteReview: (methodId: string) => void;
   onViewResources: (methodId: string) => void;
+  isPrivateMode?: boolean;
 }
 
-function MethodCard({ method, onWriteReview, onViewResources }: MethodCardProps) {
+function MethodCard({ method, onWriteReview, onViewResources, isPrivateMode = false }: MethodCardProps) {
+  const privateParam = isPrivateMode ? '?private=true' : '';
   // Determine shortcut
   let shortcutResource = null;
   if (method.resources && method.resources.length > 0) {
@@ -38,7 +40,7 @@ function MethodCard({ method, onWriteReview, onViewResources }: MethodCardProps)
 
   return (
     <Card className="h-full flex flex-col">
-       <Link href={`/methods/${method.id}`} className="block flex-1 hover:bg-[var(--surface-muted)] transition-colors rounded-t-[var(--radius-interactive)]">
+       <Link href={`/methods/${method.id}${privateParam}`} className="block flex-1 hover:bg-[var(--surface-muted)] transition-colors rounded-t-[var(--radius-interactive)]">
           <CardHeader>
             <CardTitle as="h4" className="text-base text-[var(--text-primary)]">
               {method.title}
@@ -73,7 +75,7 @@ function MethodCard({ method, onWriteReview, onViewResources }: MethodCardProps)
             </a>
           ) : null}
           <Link
-            href={`/methods/${method.id}?tab=reviews`}
+            href={`/methods/${method.id}${isPrivateMode ? '?private=true&tab=reviews' : '?tab=reviews'}`}
              className={`${method.resources && method.resources.length > 0 ? 'flex-1' : 'w-full'} py-2 px-3 text-sm rounded-[var(--radius-interactive)] bg-[var(--primary)] text-white hover:bg-[var(--primary-dark)] transition-colors text-center font-medium`}
           >
             Review
@@ -87,9 +89,10 @@ interface MethodsGridProps {
   methodsByGoal: MethodsByGoal[];
   onWriteReview: (methodId: string) => void;
   onViewResources: (methodId: string) => void;
+  isPrivateMode?: boolean;
 }
 
-export function MethodsGrid({ methodsByGoal, onWriteReview, onViewResources }: MethodsGridProps) {
+export function MethodsGrid({ methodsByGoal, onWriteReview, onViewResources, isPrivateMode = false }: MethodsGridProps) {
   if (methodsByGoal.length === 0) {
     return (
       <div className="text-center py-12">
@@ -130,6 +133,7 @@ export function MethodsGrid({ methodsByGoal, onWriteReview, onViewResources }: M
                 goalTitle={goal.title}
                 onWriteReview={onWriteReview}
                 onViewResources={onViewResources}
+                isPrivateMode={isPrivateMode}
               />
             ))}
           </div>

@@ -14,7 +14,7 @@ export function ResourceCard({ title, url }: ResourceCardProps) {
       className="block p-4 bg-[var(--surface-subtle)] rounded-[var(--radius-interactive)] hover:bg-[var(--surface-muted)] transition-colors shadow-sm hover:shadow-md cursor-pointer decoration-0 group"
     >
       <div className="flex items-center gap-3">
-        <span className="text-xl group-hover:scale-110 transition-transform">🔗</span>
+        <span className="text-xl text-[var(--text-muted)] group-hover:scale-110 transition-transform">→</span>
         <div className="flex-1 min-w-0">
           <h4 className="font-medium text-[var(--text-primary)] truncate">
             {title || 'Resource'}
