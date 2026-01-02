@@ -65,14 +65,14 @@ function DashboardContent() {
   // Show loading state only during initial auth check or if data is loading AND we have no data yet
   if (authLoading || (dataLoading && methodsByGoal.length === 0)) {
     return (
-      <div className="min-h-screen bg-[var(--background)] flex items-center justify-center">
+      <div className="min-h-screen flex items-center justify-center">
         <div className="text-[var(--text-muted)]">Loading...</div>
       </div>
     );
   }
   
   return (
-    <div className="min-h-screen bg-[var(--background)]">
+    <div className="min-h-screen">
       {/* Password prompt for timer reset */}
       {showPasswordPrompt && (
         <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center p-6 z-50">
@@ -188,7 +188,7 @@ function DashboardContent() {
 
 export default function DashboardPage() {
   return (
-    <Suspense fallback={<div className="min-h-screen bg-[var(--background)]" />}>
+    <Suspense fallback={<div className="min-h-screen" />}>
       <DashboardContent />
     </Suspense>
   );

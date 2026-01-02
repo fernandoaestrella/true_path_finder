@@ -146,6 +146,18 @@ export function Header({ currentPage = 'other', timerExtra, isOnMyCaveDashboard 
               </svg>
               <span>Profile</span>
             </a>
+
+            <a
+              href="/about"
+              className="w-full flex items-center gap-3 px-4 py-3 rounded-[var(--radius-interactive)] bg-[var(--surface-subtle)] hover:bg-[var(--primary-light)] cursor-pointer transition-colors text-[var(--text-primary)]"
+            >
+              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                <circle cx="12" cy="12" r="10" />
+                <line x1="12" y1="16" x2="12" y2="12" />
+                <line x1="12" y1="8" x2="12.01" y2="8" />
+              </svg>
+              <span>About</span>
+            </a>
             
             <button
               onClick={() => {

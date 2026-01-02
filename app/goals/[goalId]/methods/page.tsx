@@ -220,14 +220,14 @@ function MethodsPageContent({ params }: { params: PageParams }) {
   
   if (authLoading || isLoading) {
     return (
-      <div className={`min-h-screen ${isPrivateMode ? 'cave-mode' : 'bg-[var(--background)]'} flex items-center justify-center`}>
+      <div className="min-h-screen flex items-center justify-center">
         <div className="text-[var(--text-muted)]">Loading...</div>
       </div>
     );
   }
   
   return (
-    <div className={`min-h-screen ${isPrivateMode ? 'cave-mode' : 'bg-[var(--background)]'}`}>
+    <div className="min-h-screen">
       <Header currentPage={isPrivateMode ? 'my-cave' : 'other'} />
       
       {/* Main Content */}
@@ -451,7 +451,7 @@ function MethodsPageContent({ params }: { params: PageParams }) {
 
 export default function MethodsPage({ params }: { params: PageParams }) {
   return (
-    <Suspense fallback={<div className="min-h-screen bg-[var(--background)]" />}>
+    <Suspense fallback={<div className="min-h-screen" />}>
       <MethodsPageContent params={params} />
     </Suspense>
   );

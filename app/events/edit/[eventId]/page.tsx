@@ -5,7 +5,7 @@ import { useRouter, useParams, useSearchParams } from 'next/navigation';
 import { doc, getDoc, updateDoc, serverTimestamp } from 'firebase/firestore';
 import { db } from '@/src/lib/firebase/config';
 import { useAuth } from '@/lib/contexts/AuthContext';
-import { Button, Input, Card, Header } from '@/components';
+import { Button, Input, Card, Header, InfoTooltip } from '@/components';
 import { RepeatabilityConfig } from '@/types';
 
 interface PhaseConfig {
@@ -27,29 +27,7 @@ interface EventFormData {
   repeatability: RepeatabilityConfig;
 }
 
-const InfoTooltip = ({ content }: { content: string }) => {
-  const [showTooltip, setShowTooltip] = useState(false);
-  
-  return (
-    <div className="relative inline-block ml-2">
-      <button
-        type="button"
-        onMouseEnter={() => setShowTooltip(true)}
-        onMouseLeave={() => setShowTooltip(false)}
-        onClick={() => setShowTooltip(!showTooltip)}
-        className="w-5 h-5 rounded-full bg-[var(--primary)] text-white text-sm flex items-center justify-center cursor-help hover:bg-[var(--primary-dark)] transition-colors"
-        aria-label="More information"
-      >
-        i
-      </button>
-      {showTooltip && (
-        <div className="absolute left-1/2 -translate-x-1/2 bottom-full mb-2 w-64 p-3 bg-[var(--text-primary)] text-white text-sm rounded-[var(--radius-interactive)] shadow-lg z-10">
-          {content}
-        </div>
-      )}
-    </div>
-  );
-};
+
 
 const PhaseInput = ({ 
   label, 
@@ -247,11 +225,11 @@ function EditEventContent() {
   };
 
   if (isLoading) {
-      return <div className={`min-h-screen ${isPrivateMode ? 'cave-mode' : 'bg-[var(--background)]'} flex items-center justify-center`}><p>Loading...</p></div>;
+      return <div className="min-h-screen flex items-center justify-center"><p>Loading...</p></div>;
   }
 
   return (
-    <div className={`min-h-screen ${isPrivateMode ? 'cave-mode' : 'bg-[var(--background)]'}`}>
+    <div className="min-h-screen">
       <Header currentPage={isPrivateMode ? 'my-cave' : 'other'} />
 
       <div className="container py-8">
@@ -564,7 +542,7 @@ function EditEventContent() {
 
 export default function EditEventPage() {
   return (
-    <Suspense fallback={<div className="min-h-screen bg-[var(--background)] flex items-center justify-center"><p>Loading...</p></div>}>
+    <Suspense fallback={<div className="min-h-screen flex items-center justify-center"><p>Loading...</p></div>}>
       <EditEventContent />
     </Suspense>
   );

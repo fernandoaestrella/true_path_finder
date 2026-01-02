@@ -4,6 +4,7 @@ import "./globals.css";
 import { AuthProvider } from "@/lib/contexts/AuthContext";
 import { TimerProvider } from "@/lib/contexts/TimerContext";
 import { UserDataProvider } from "@/lib/contexts/UserDataContext";
+import { DepthProvider } from "@/components/providers/DepthProvider";
 
 const inter = Inter({
   variable: "--font-inter",
@@ -27,7 +28,9 @@ export default function RootLayout({
         <AuthProvider>
           <UserDataProvider>
             <TimerProvider>
-              {children}
+              <DepthProvider>
+                {children}
+              </DepthProvider>
             </TimerProvider>
           </UserDataProvider>
         </AuthProvider>

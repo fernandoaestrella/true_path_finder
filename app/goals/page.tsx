@@ -9,9 +9,7 @@ import { Goal } from '@/types';
 import { collection, getDocs, addDoc, setDoc, deleteDoc, doc, serverTimestamp, query, where, getCountFromServer } from 'firebase/firestore';
 import { db } from '@/src/lib/firebase/config';
 
-type GoalWithStats = Goal & {
-  methodCount: number;
-};
+
 
 function GoalsPageContent() {
   const { user, isLoading: authLoading } = useAuth();
@@ -27,9 +25,8 @@ function GoalsPageContent() {
     isPrivateMode ? g.isPrivate === true : g.isPrivate !== true
   );
   
-  const [goals, setGoals] = useState<GoalWithStats[]>(
-    modeFilteredGoals.map(g => ({ ...g, methodCount: 0 }))
-  );
+  // Method counts state
+  const [methodCounts, setMethodCounts] = useState<Record<string, number>>({});
   const [chosenGoalIds, setChosenGoalIds] = useState<Set<string>>(new Set());
   
   // Initialize loading state:
@@ -62,11 +59,6 @@ function GoalsPageContent() {
       if (modeFilteredGoals.length > 0 || !contextLoading) {
           setIsLoading(false);
       }
-      
-      // Update local goals if context allGoals updates
-      if (modeFilteredGoals.length >= 0) {
-          setGoals(modeFilteredGoals.map(g => ({ ...g, methodCount: 0 })));
-      }
   }, [allGoals, contextLoading, isPrivateMode]);
   
   // Fetch method counts in background
@@ -75,17 +67,16 @@ function GoalsPageContent() {
     
     const fetchCounts = async () => {
       try {
-        const updatedGoals = await Promise.all(modeFilteredGoals.map(async (goal) => {
+        const counts: Record<string, number> = {};
+        
+        await Promise.all(modeFilteredGoals.map(async (goal) => {
            const methodsRef = collection(db, 'methods');
            const q = query(methodsRef, where('goalId', '==', goal.id));
            const snapshot = await getCountFromServer(q);
-           return {
-             ...goal,
-             methodCount: snapshot.data().count,
-           };
+           counts[goal.id] = snapshot.data().count;
         }));
         
-        setGoals(updatedGoals);
+        setMethodCounts(prev => ({ ...prev, ...counts }));
       } catch (error) {
         console.error('Error fetching stats:', error);
       }
@@ -169,13 +160,15 @@ function GoalsPageContent() {
         isPrivate: isPrivateMode,
       };
       
-      setGoals(prev => [{ ...newGoal, methodCount: 0 }, ...prev]);
-      
       // Auto-choose the new goal
       await setDoc(doc(db, 'users', user.uid, 'chosenGoals', goalDoc.id), {
         addedAt: serverTimestamp(),
       });
       setChosenGoalIds(prev => new Set(prev).add(goalDoc.id));
+      
+      // Initialize count for new goal
+      setMethodCounts(prev => ({ ...prev, [goalDoc.id]: 0 }));
+      
       refreshUserData();
       
       // Reset form
@@ -190,21 +183,21 @@ function GoalsPageContent() {
   };
   
   // Filter goals by search
-  const filteredGoals = goals.filter(goal =>
+  const filteredGoals = modeFilteredGoals.filter(goal =>
     goal.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
     goal.description.toLowerCase().includes(searchQuery.toLowerCase())
   );
   
   if (authLoading || isLoading) {
     return (
-      <div className="min-h-screen bg-[var(--background)] flex items-center justify-center">
+      <div className="min-h-screen flex items-center justify-center">
         <div className="text-[var(--text-muted)]">Loading...</div>
       </div>
     );
   }
   
   return (
-    <div className={`min-h-screen ${isPrivateMode ? 'cave-mode' : 'bg-[var(--background)]'}`}>
+    <div className="min-h-screen">
       <Header currentPage={isPrivateMode ? 'my-cave' : 'goals'} />
       
       {/* Main Content */}
@@ -311,7 +304,7 @@ function GoalsPageContent() {
                         }}
                         className="text-sm text-[var(--primary)] hover:underline bg-transparent border-none p-0 cursor-pointer"
                       >
-                        Select a method. {goal.methodCount || 0} exist →
+                        Select a method. {methodCounts[goal.id] || 0} exist →
                       </button>
                     </div>
                   </CardContent>
@@ -335,7 +328,7 @@ function GoalsPageContent() {
 
 export default function GoalsPage() {
   return (
-    <Suspense fallback={<div className="min-h-screen bg-[var(--background)]" />}>
+    <Suspense fallback={<div className="min-h-screen" />}>
       <GoalsPageContent />
     </Suspense>
   );

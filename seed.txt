@@ -1,0 +1,10 @@
+   --- Credentials ---
+   seeduser17673217026261@test.com / SeedPass123!
+   seeduser17673217032732@test.com / SeedPass123!
+   seeduser17673217036213@test.com / SeedPass123!
+
+
+   --- User Credentials (save these!) ---
+  tester17673207021221@test.com / Test123456!
+  tester17673207027532@test.com / Test123456!
+  tester17673207031433@test.com / Test123456!

@@ -9,7 +9,7 @@ import { TPFEvent, EventBatch } from '@/types';
 import PhaseIndicator from '@/components/features/PhaseIndicator';
 import ChatPanel from '@/components/features/ChatPanel';
 import EventNotes from '@/components/features/EventNotes';
-import { Button, Card, InfoCard, Header, ResourceCard } from '@/components';
+import { Button, Card, InfoCard, Header, ResourceCard, InfoTooltip } from '@/components';
 import { AddToCalendarButton } from 'add-to-calendar-button-react';
 import { getNextEventOccurrence, getEventDurationSeconds } from '@/lib/utils/eventUtils';
 import { formatDuration, formatEventDate } from '@/lib/utils/timeUtils';
@@ -21,29 +21,7 @@ const getOrdinal = (n: number) => {
   return n + (s[(v - 20) % 10] || s[v] || s[0]);
 };
 
-const InfoTooltip = ({ content }: { content: string }) => {
-  const [showTooltip, setShowTooltip] = useState(false);
-  
-  return (
-    <div className="relative inline-block ml-2 align-middle">
-      <button
-        type="button"
-        onMouseEnter={() => setShowTooltip(true)}
-        onMouseLeave={() => setShowTooltip(false)}
-        onClick={() => setShowTooltip(!showTooltip)}
-        className="w-5 h-5 rounded-full bg-[var(--primary)] text-white text-sm flex items-center justify-center cursor-help hover:bg-[var(--primary-dark)] transition-colors"
-        aria-label="More information"
-      >
-        i
-      </button>
-      {showTooltip && (
-        <div className="absolute left-1/2 -translate-x-1/2 bottom-full mb-2 w-64 p-3 bg-[var(--text-primary)] text-white text-sm rounded-[var(--radius-interactive)] shadow-lg z-10 text-left normal-case font-normal">
-          {content}
-        </div>
-      )}
-    </div>
-  );
-};
+
 
 const EditButton = ({ eventId, isStarted, isPrivateMode = false }: { eventId: string, isStarted: boolean, isPrivateMode?: boolean }) => {
   const router = useRouter();
@@ -333,7 +311,7 @@ function EventPageContent() {
 
   if (isLoading) {
     return (
-      <div className={`min-h-screen ${isPrivateMode ? 'cave-mode' : 'bg-[var(--background)]'} flex items-center justify-center`}>
+      <div className="min-h-screen flex items-center justify-center">
         <div className="text-xl text-[var(--text-secondary)]">Loading event...</div>
       </div>
     );
@@ -341,7 +319,7 @@ function EventPageContent() {
 
   if (!event) {
     return (
-      <div className={`min-h-screen ${isPrivateMode ? 'cave-mode' : 'bg-[var(--background)]'} flex items-center justify-center`}>
+      <div className="min-h-screen flex items-center justify-center">
         <InfoCard className="max-w-md">
           <h1 className="text-2xl font-bold text-[var(--text-primary)] mb-4">Event Not Found</h1>
           <p className="text-[var(--text-secondary)] mb-6">This event does not exist or has been deleted.</p>
@@ -356,7 +334,7 @@ function EventPageContent() {
   const isChatEnabled = currentPhase === 'arrival' || currentPhase === 'close';
 
   return (
-    <div className={`min-h-screen ${isPrivateMode ? 'cave-mode' : 'bg-[var(--background)]'}`}>
+    <div className="min-h-screen">
       <Header currentPage={isPrivateMode ? 'my-cave' : 'other'} />
 
       <div className="container py-8">
@@ -576,7 +554,7 @@ function EventPageContent() {
 
 export default function EventPage() {
   return (
-    <Suspense fallback={<div className="min-h-screen bg-[var(--background)]" />}>
+    <Suspense fallback={<div className="min-h-screen" />}>
       <EventPageContent />
     </Suspense>
   );

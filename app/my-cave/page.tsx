@@ -2,7 +2,7 @@
 
 import React, { useState, useEffect, Suspense } from 'react';
 import { useSearchParams, useRouter } from 'next/navigation';
-import { Header, EventCard } from '@/components';
+import { Header, EventCard, InfoTooltip } from '@/components';
 import { MethodsGrid } from '@/components/features/MethodsGrid';
 import { useSessionTimer } from '@/lib/hooks/useSessionTimer';
 import { useAuth } from '@/lib/contexts/AuthContext';
@@ -52,14 +52,14 @@ function MyCaveContent() {
   // Show loading state only during initial auth check or if data is loading AND we have no data yet
   if (authLoading || (dataLoading && privateMethodsByGoal.length === 0)) {
     return (
-      <div className="min-h-screen cave-mode flex items-center justify-center">
+      <div className="min-h-screen flex items-center justify-center">
         <div className="text-[var(--text-muted)]">Loading...</div>
       </div>
     );
   }
   
   return (
-    <div className="min-h-screen cave-mode">
+    <div className="min-h-screen">
       {/* Password prompt for timer reset */}
       {showPasswordPrompt && (
         <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center p-6 z-50">
@@ -140,6 +140,7 @@ function MyCaveContent() {
               <path d="M7 11V7a5 5 0 0 1 10 0v4" />
             </svg>
             Everything in My Cave is private - only you can see it
+            <InfoTooltip content="The cave gets darker the deeper you go. To exit the cave, return to this cave entrance" />
           </p>
         </div>
 
@@ -196,7 +197,7 @@ function MyCaveContent() {
 
 export default function MyCavePage() {
   return (
-    <Suspense fallback={<div className="min-h-screen cave-mode" />}>
+    <Suspense fallback={<div className="min-h-screen" />}>
       <MyCaveContent />
     </Suspense>
   );

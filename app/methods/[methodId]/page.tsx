@@ -3,7 +3,7 @@
 import React, { useState, useEffect, use, Suspense } from 'react';
 import { useSearchParams, useRouter } from 'next/navigation';
 import Link from 'next/link';
-import { Button, Textarea, Card, CardHeader, CardTitle, CardContent, Header, ResourceCard, Input } from '@/components';
+import { Button, Textarea, Card, CardHeader, CardTitle, CardContent, Header, ResourceCard, Input, InfoTooltip } from '@/components';
 import { useAuth } from '@/lib/contexts/AuthContext';
 import { Method, Review, TPFEvent } from '@/types';
 import { collection, getDocs, addDoc, doc, getDoc, serverTimestamp, updateDoc, query, where, orderBy, setDoc, deleteDoc, increment } from 'firebase/firestore';
@@ -16,29 +16,7 @@ import { getNextEventOccurrence } from '@/lib/utils/eventUtils';
 
 type PageParams = Promise<{ methodId: string }>;
 
-const InfoTooltip = ({ content }: { content: string }) => {
-  const [showTooltip, setShowTooltip] = useState(false);
-  
-  return (
-    <div className="relative inline-block ml-2 align-middle">
-      <button
-        type="button"
-        onMouseEnter={() => setShowTooltip(true)}
-        onMouseLeave={() => setShowTooltip(false)}
-        onClick={() => setShowTooltip(!showTooltip)}
-        className="w-5 h-5 rounded-full bg-[var(--primary)] text-white text-sm flex items-center justify-center cursor-help hover:bg-[var(--primary-dark)] transition-colors"
-        aria-label="More information"
-      >
-        i
-      </button>
-      {showTooltip && (
-        <div className="absolute left-1/2 -translate-x-1/2 bottom-full mb-2 w-64 p-3 bg-[var(--text-primary)] text-white text-sm rounded-[var(--radius-interactive)] shadow-lg z-10 text-left normal-case font-normal">
-          {content}
-        </div>
-      )}
-    </div>
-  );
-};
+
 
 function MethodDetailContent({ params }: { params: PageParams }) {
   const { methodId } = use(params);
@@ -362,7 +340,7 @@ function MethodDetailContent({ params }: { params: PageParams }) {
   
   if (authLoading || isLoading) {
     return (
-      <div className={`min-h-screen ${isPrivateMode ? 'cave-mode' : 'bg-[var(--background)]'} flex items-center justify-center`}>
+      <div className="min-h-screen flex items-center justify-center">
         <div className="text-[var(--text-muted)]">Loading...</div>
       </div>
     );
@@ -370,7 +348,7 @@ function MethodDetailContent({ params }: { params: PageParams }) {
   
   if (!method) {
     return (
-      <div className={`min-h-screen ${isPrivateMode ? 'cave-mode' : 'bg-[var(--background)]'} flex items-center justify-center`}>
+      <div className="min-h-screen flex items-center justify-center">
         <div className="text-center">
           <div className="text-6xl mb-4">?</div>
           <h2 className="text-xl font-bold text-[var(--text-primary)]">Method not found</h2>
@@ -383,7 +361,7 @@ function MethodDetailContent({ params }: { params: PageParams }) {
   }
   
   return (
-    <div className={`min-h-screen ${isPrivateMode ? 'cave-mode' : 'bg-[var(--background)]'}`}>
+    <div className="min-h-screen">
       <Header currentPage={isPrivateMode ? 'my-cave' : 'other'} />
       
       {/* Content */}
@@ -761,7 +739,7 @@ function MethodDetailContent({ params }: { params: PageParams }) {
 
 export default function MethodDetailPage({ params }: { params: PageParams }) {
   return (
-    <Suspense fallback={<div className="min-h-screen bg-[var(--background)] flex items-center justify-center"><div className="text-[var(--text-muted)]">Loading...</div></div>}>
+    <Suspense fallback={<div className="min-h-screen flex items-center justify-center"><div className="text-[var(--text-muted)]">Loading...</div></div>}>
       <MethodDetailContent params={params} />
     </Suspense>
   );
