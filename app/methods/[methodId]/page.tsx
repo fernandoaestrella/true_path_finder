@@ -720,7 +720,7 @@ function MethodDetailContent({ params }: { params: PageParams }) {
           <div className="animate-fade-in">
             {/* Create Event Button */}
             <div className="mb-6">
-              <Button onClick={() => router.push(`/events/create?methodId=${methodId}`)}>
+              <Button onClick={() => router.push(`/events/create?methodId=${methodId}${isPrivateMode ? '&private=true' : ''}`)}>
                 + Create Event
               </Button>
             </div>

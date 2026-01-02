@@ -8,9 +8,10 @@ import { useAuth } from '@/lib/contexts/AuthContext';
 interface HeaderProps {
   currentPage?: 'dashboard' | 'goals' | 'my-cave' | 'other';
   timerExtra?: React.ReactNode;
+  isOnMyCaveDashboard?: boolean; // True only when on actual /my-cave page
 }
 
-export function Header({ currentPage = 'other', timerExtra }: HeaderProps) {
+export function Header({ currentPage = 'other', timerExtra, isOnMyCaveDashboard = false }: HeaderProps) {
   const { logout } = useAuth();
   const { minutes, seconds, isPaused } = useSessionTimer();
   const [isMenuOpen, setIsMenuOpen] = useState(false);
@@ -51,12 +52,27 @@ export function Header({ currentPage = 'other', timerExtra }: HeaderProps) {
             )}
             {currentPage === 'my-cave' && (
               <>
-                <a 
-                  href="/dashboard" 
-                  className="px-3 py-2 rounded-[var(--radius-interactive)] bg-[var(--surface-subtle)] text-[var(--text-secondary)] hover:bg-[var(--primary-light)] hover:text-[var(--text-primary)] cursor-pointer transition-colors"
-                >
-                  Exit My Cave
-                </a>
+                {isOnMyCaveDashboard ? (
+                  // On actual /my-cave page - show Exit to Dashboard
+                  <a 
+                    href="/dashboard" 
+                    className="px-3 py-2 rounded-[var(--radius-interactive)] bg-[var(--surface-subtle)] text-[var(--text-secondary)] hover:bg-[var(--primary-light)] hover:text-[var(--text-primary)] cursor-pointer transition-colors"
+                  >
+                    Exit My Cave
+                  </a>
+                ) : (
+                  // On other private pages - show My Cave button to go back
+                  <a 
+                    href="/my-cave" 
+                    className="px-3 py-2 rounded-[var(--radius-interactive)] bg-[var(--surface-subtle)] text-[var(--text-secondary)] hover:bg-[var(--primary-light)] hover:text-[var(--text-primary)] cursor-pointer transition-colors flex items-center gap-2"
+                  >
+                    {/* Cave icon */}
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor">
+                      <path d="M12 2C6 2 2 8 2 14c0 4 2 8 4 8h12c2 0 4-4 4-8 0-6-4-12-10-12zm-2 16c-1 0-2-2-2-4s1-4 2-4 2 2 2 4-1 4-2 4zm4-6c-.5 0-1-1-1-2s.5-2 1-2 1 1 1 2-.5 2-1 2z"/>
+                    </svg>
+                    My Cave Entrance
+                  </a>
+                )}
                 <a 
                   href="/goals?private=true" 
                   className="px-3 py-2 rounded-[var(--radius-interactive)] bg-[var(--surface-subtle)] text-[var(--text-secondary)] hover:bg-[var(--primary-light)] hover:text-[var(--text-primary)] cursor-pointer transition-colors"

@@ -45,9 +45,10 @@ const InfoTooltip = ({ content }: { content: string }) => {
   );
 };
 
-const EditButton = ({ eventId, isStarted }: { eventId: string, isStarted: boolean }) => {
+const EditButton = ({ eventId, isStarted, isPrivateMode = false }: { eventId: string, isStarted: boolean, isPrivateMode?: boolean }) => {
   const router = useRouter();
   const [showTooltip, setShowTooltip] = useState(false);
+  const privateParam = isPrivateMode ? '?private=true' : '';
 
   if (isStarted) {
     return (
@@ -78,7 +79,7 @@ const EditButton = ({ eventId, isStarted }: { eventId: string, isStarted: boolea
   return (
     <Button 
       variant="secondary" 
-      onClick={() => router.push(`/events/edit/${eventId}`)}
+      onClick={() => router.push(`/events/edit/${eventId}${privateParam}`)}
       className="text-sm px-3 py-1 h-8"
     >
       Edit
@@ -379,7 +380,7 @@ function EventPageContent() {
              
              {isCreator && (
                <div className="flex gap-2">
-                   <EditButton eventId={eventId} isStarted={elapsedSeconds >= 0} />
+                   <EditButton eventId={eventId} isStarted={elapsedSeconds >= 0} isPrivateMode={isPrivateMode} />
                  <Button 
                    variant="secondary" 
                    onClick={handleDeleteEvent}

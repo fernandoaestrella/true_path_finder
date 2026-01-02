@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useState, useEffect, Suspense } from 'react';
-import { useRouter, useParams } from 'next/navigation';
+import { useRouter, useParams, useSearchParams } from 'next/navigation';
 import { doc, getDoc, updateDoc, serverTimestamp } from 'firebase/firestore';
 import { db } from '@/src/lib/firebase/config';
 import { useAuth } from '@/lib/contexts/AuthContext';
@@ -109,10 +109,14 @@ const PhaseInput = ({
 function EditEventContent() {
   const router = useRouter();
   const params = useParams();
+  const searchParams = useSearchParams();
   const eventId = params.eventId as string;
   const { user } = useAuth();
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
+  
+  // Private mode from query param
+  const isPrivateMode = searchParams.get('private') === 'true';
   
   const [formData, setFormData] = useState<EventFormData>({
     title: '',
@@ -231,8 +235,9 @@ function EditEventContent() {
 
       await updateDoc(doc(db, 'events', eventId), eventData);
       
-      // Redirect back to event page
-      router.push(`/events/${eventId}`);
+      // Redirect back to event page, preserving private mode
+      const privateParam = isPrivateMode ? '?private=true' : '';
+      router.push(`/events/${eventId}${privateParam}`);
     } catch (error) {
       console.error('Error updating event:', error);
       alert('Failed to update event. Please try again.');
@@ -242,12 +247,12 @@ function EditEventContent() {
   };
 
   if (isLoading) {
-      return <div className="min-h-screen bg-[var(--background)] flex items-center justify-center"><p>Loading...</p></div>;
+      return <div className={`min-h-screen ${isPrivateMode ? 'cave-mode' : 'bg-[var(--background)]'} flex items-center justify-center`}><p>Loading...</p></div>;
   }
 
   return (
-    <div className="min-h-screen bg-[var(--background)]">
-      <Header />
+    <div className={`min-h-screen ${isPrivateMode ? 'cave-mode' : 'bg-[var(--background)]'}`}>
+      <Header currentPage={isPrivateMode ? 'my-cave' : 'other'} />
 
       <div className="container py-8">
         <h1 className="text-3xl font-bold text-[var(--text-primary)] mb-2">Edit Event</h1>

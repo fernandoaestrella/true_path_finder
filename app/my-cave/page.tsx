@@ -116,6 +116,7 @@ function MyCaveContent() {
       
       <Header 
         currentPage="my-cave" 
+        isOnMyCaveDashboard={true}
         timerExtra={
           isDebug ? (
             <button

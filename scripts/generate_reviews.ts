@@ -1,131 +1,180 @@
+/**
+ * Review Generation Script - Using Firebase REST API
+ * Run with: npx tsx scripts/generate_reviews.ts
+ */
 
-import { initializeApp } from "firebase/app";
-import { getFirestore, collection, addDoc, serverTimestamp, Timestamp } from "firebase/firestore";
-import { getAuth, signInWithEmailAndPassword, createUserWithEmailAndPassword } from "firebase/auth";
 import * as fs from 'fs';
 import * as path from 'path';
 
-// Manual env loading for standalone script
+// Manual env loading
 const envPath = path.resolve(__dirname, '../.env.local');
 if (fs.existsSync(envPath)) {
     const envFile = fs.readFileSync(envPath, 'utf8');
     envFile.split('\n').forEach(line => {
-        const [key, value] = line.split('=');
-        if (key && value) process.env[key.trim()] = value.trim().replace(/^["']|["']$/g, '');
+        const match = line.match(/^([^=]+)=(.*)$/);
+        if (match) {
+            process.env[match[1].trim()] = match[2].trim().replace(/^["']|["']$/g, '');
+        }
     });
 }
 
-// Config from env (or hardcoded for dev if needed, but better to use env)
-const firebaseConfig = {
-  apiKey: process.env.NEXT_PUBLIC_FIREBASE_API_KEY,
-  authDomain: process.env.NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN,
-  projectId: process.env.NEXT_PUBLIC_FIREBASE_PROJECT_ID,
-  storageBucket: process.env.NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET,
-  messagingSenderId: process.env.NEXT_PUBLIC_FIREBASE_MESSAGING_SENDER_ID,
-  appId: process.env.NEXT_PUBLIC_FIREBASE_APP_ID,
-};
+const API_KEY = process.env.NEXT_PUBLIC_FIREBASE_API_KEY;
+const PROJECT_ID = process.env.NEXT_PUBLIC_FIREBASE_PROJECT_ID;
+const METHOD_ID = 'TIalvecB46SGTIoWlv9B';
 
-// Initialize Firebase
-const app = initializeApp(firebaseConfig);
-const db = getFirestore(app);
-const auth = getAuth(app);
+// REST API endpoints
+const AUTH_URL = `https://identitytoolkit.googleapis.com/v1/accounts:signUp?key=${API_KEY}`;
+const FIRESTORE_URL = `https://firestore.googleapis.com/v1/projects/${PROJECT_ID}/databases/(default)/documents`;
 
-const METHOD_ID = 'YOUR_METHOD_ID_HERE'; // User can replace this or we can create one.
+interface FirestoreValue {
+    stringValue?: string;
+    integerValue?: string;
+    doubleValue?: number;
+    booleanValue?: boolean;
+    timestampValue?: string;
+    mapValue?: { fields: Record<string, FirestoreValue> };
+}
 
-// Random helpers
-const getRandomScore = (min: number, max: number) => Math.floor(Math.random() * (max - min + 1)) + min;
-const getRandomText = (score: number) => {
-    const texts = [
-        ["Terrible.", "Hated it.", "Made things worse.", "Waste of time."],
-        ["Meh.", "Didn't do much.", "Boring.", "Nothing changed."],
-        ["Okay.", "Decent.", "Helped a bit.", "Good starting point."],
-        ["Great!", "Really helpful.", "Feeling better.", "Solid method."],
-        ["Life changing!", "Amazing.", "The best thing ever.", "Totally transformed me."]
-    ];
-    return texts[score - 1][Math.floor(Math.random() * texts[score - 1].length)];
-};
+function toFirestoreValue(value: any): FirestoreValue {
+    if (typeof value === 'string') return { stringValue: value };
+    if (typeof value === 'number') return Number.isInteger(value) ? { integerValue: String(value) } : { doubleValue: value };
+    if (typeof value === 'boolean') return { booleanValue: value };
+    if (value instanceof Date) return { timestampValue: value.toISOString() };
+    if (typeof value === 'object') {
+        const fields: Record<string, FirestoreValue> = {};
+        for (const [k, v] of Object.entries(value)) {
+            fields[k] = toFirestoreValue(v);
+        }
+        return { mapValue: { fields } };
+    }
+    return { stringValue: String(value) };
+}
 
-async function createReview(userId: string, methodId: string, score: number, dateOffsetDays: number) {
+async function createUser(email: string, password: string): Promise<{ uid: string; idToken: string } | null> {
+    try {
+        const res = await fetch(AUTH_URL, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ email, password, returnSecureToken: true })
+        });
+        const data = await res.json();
+        if (data.error) {
+            console.log(`  Auth error: ${data.error.message}`);
+            return null;
+        }
+        return { uid: data.localId, idToken: data.idToken };
+    } catch (e: any) {
+        console.log(`  Fetch error: ${e.message}`);
+        return null;
+    }
+}
+
+async function createReview(idToken: string, userId: string, methodId: string, score: number, daysAgo: number) {
     const date = new Date();
-    date.setDate(date.getDate() - dateOffsetDays);
-    
-    await addDoc(collection(db, 'reviews'), {
-        methodId,
-        userId,
-        score,
-        content: `[MOCK] ${getRandomText(score)} (Day -${dateOffsetDays})`,
-        createdAt: Timestamp.fromDate(date),
-        updatedAt: Timestamp.fromDate(date),
-        metMinimum: Math.random() > 0.5,
-        attemptsSummary: { count: 10, totalDurationMinutes: 100 }
-    });
-    console.log(`Created review: Score ${score} on ${date.toISOString().split('T')[0]}`);
+    date.setDate(date.getDate() - daysAgo);
+
+    const reviewData = {
+        fields: {
+            methodId: toFirestoreValue(methodId),
+            userId: toFirestoreValue(userId),
+            score: toFirestoreValue(score),
+            content: toFirestoreValue(`[MOCK] Test review with score ${score}. Created ${daysAgo} days ago.`),
+            createdAt: toFirestoreValue(date),
+            updatedAt: toFirestoreValue(date),
+            metMinimum: toFirestoreValue(daysAgo > 30),
+            attemptsSummary: toFirestoreValue({ count: 10, totalDurationMinutes: 100 })
+        }
+    };
+
+    try {
+        const res = await fetch(`${FIRESTORE_URL}/reviews`, {
+            method: 'POST',
+            headers: { 
+                'Content-Type': 'application/json',
+                'Authorization': `Bearer ${idToken}`
+            },
+            body: JSON.stringify(reviewData)
+        });
+        
+        if (!res.ok) {
+            const errText = await res.text();
+            console.log(`  Firestore error: ${errText}`);
+            return false;
+        }
+        console.log(`  ✓ Review: Score ${score}, ${daysAgo} days ago`);
+        return true;
+    } catch (e: any) {
+        console.log(`  Fetch error: ${e.message}`);
+        return false;
+    }
 }
 
 async function main() {
-    console.log("Starting Review Generation...");
-
-    if (!process.env.NEXT_PUBLIC_FIREBASE_API_KEY) {
-        console.error("Missing Env Vars. Make sure .env.local exists.");
+    console.log('=== Review Generation Script ===\n');
+    
+    if (!API_KEY || !PROJECT_ID) {
+        console.error('ERROR: Missing env vars. Check .env.local');
         process.exit(1);
     }
 
-    const testUsers = [];
-    
-    // 1. Create a few test users
-    for (let i = 1; i <= 5; i++) {
-        const email = `test_trend_${Date.now()}_${i}@example.com`;
-        const password = 'password123';
+    console.log(`Project: ${PROJECT_ID}`);
+    console.log(`Method ID: ${METHOD_ID}\n`);
+
+    const users: { email: string; password: string; uid: string; idToken: string }[] = [];
+
+    // Create test users
+    console.log('Creating test users...');
+    for (let i = 1; i <= 3; i++) {
+        const email = `tester${Date.now()}${i}@test.com`;
+        const password = 'Test123456!';
         
-        try {
-            const userCred = await createUserWithEmailAndPassword(auth, email, password);
-            testUsers.push({ uid: userCred.user.uid, email, password });
-            console.log(`Created User: ${email} / ${password} (UID: ${userCred.user.uid})`);
-        } catch (e: any) {
-             console.log(`Error creating user ${email}: ${e.message}`);
-             // If email exists, try to login? Na, just generic catch
+        console.log(`  Creating ${email}...`);
+        const result = await createUser(email, password);
+        
+        if (result) {
+            users.push({ email, password, uid: result.uid, idToken: result.idToken });
+            console.log(`  ✓ Created: ${email} / ${password}`);
         }
     }
-    
-    // 2. Generate Review History
-    // We want a mix of patterns.
-    
-    // User 1: The "Success Story" (Starts low, goes high, stays high)
-    if (testUsers[0]) {
-        const uid = testUsers[0].uid;
-        console.log(`\nGenerating Success Story for ${testUsers[0].email} (Method: ${METHOD_ID})...`);
-        // 6 months ago
-        await createReview(uid, METHOD_ID, 2, 180);
-        await createReview(uid, METHOD_ID, 3, 150);
-        await createReview(uid, METHOD_ID, 3, 120);
-        await createReview(uid, METHOD_ID, 4, 90);
-        await createReview(uid, METHOD_ID, 5, 60);
-        await createReview(uid, METHOD_ID, 5, 30);
-        await createReview(uid, METHOD_ID, 5, 2);
+
+    if (users.length === 0) {
+        console.log('\nNo users created. Exiting.');
+        process.exit(1);
     }
-    
-    // User 2: The "Drop Off" (Starts high, gets bored/low, stops)
-    if (testUsers[1]) {
-        const uid = testUsers[1].uid;
-        console.log(`\nGenerating Drop Off for ${testUsers[1].email}...`);
-        await createReview(uid, METHOD_ID, 4, 180);
-        await createReview(uid, METHOD_ID, 3, 170);
-        await createReview(uid, METHOD_ID, 2, 160);
-        // ... stops
+
+    console.log('\n--- User Credentials (save these!) ---');
+    users.forEach(u => console.log(`  ${u.email} / ${u.password}`));
+    console.log('--------------------------------------\n');
+
+    // Generate reviews for each user
+    console.log('Generating review histories...\n');
+
+    // User 1: Success story (starts low, goes high)
+    if (users[0]) {
+        console.log(`User 1 (Success Story): ${users[0].email}`);
+        await createReview(users[0].idToken, users[0].uid, METHOD_ID, 2, 180);
+        await createReview(users[0].idToken, users[0].uid, METHOD_ID, 3, 120);
+        await createReview(users[0].idToken, users[0].uid, METHOD_ID, 4, 60);
+        await createReview(users[0].idToken, users[0].uid, METHOD_ID, 5, 7);
     }
-    
-    // User 3: The "Consistent" (Middle of the road)
-    if (testUsers[2]) {
-        const uid = testUsers[2].uid;
-        console.log(`\nGenerating Consistent for ${testUsers[2].email}...`);
-        for (let d = 180; d >= 0; d -= 30) {
-            await createReview(uid, METHOD_ID, 3, d);
-        }
+
+    // User 2: Drop-off (starts high, leaves)
+    if (users[1]) {
+        console.log(`\nUser 2 (Drop-off): ${users[1].email}`);
+        await createReview(users[1].idToken, users[1].uid, METHOD_ID, 4, 150);
+        await createReview(users[1].idToken, users[1].uid, METHOD_ID, 2, 140);
     }
-    
-    console.log("\nDone! Copy a User Email/Password above to log in and test.");
-    console.log("IMPORTANT: Update the METHOD_ID const in this script to target a real method ID from your database.");
-    process.exit(0);
+
+    // User 3: Consistent middle
+    if (users[2]) {
+        console.log(`\nUser 3 (Consistent): ${users[2].email}`);
+        await createReview(users[2].idToken, users[2].uid, METHOD_ID, 3, 180);
+        await createReview(users[2].idToken, users[2].uid, METHOD_ID, 3, 90);
+        await createReview(users[2].idToken, users[2].uid, METHOD_ID, 3, 14);
+    }
+
+    console.log('\n=== Done! ===');
+    console.log('Go to the Method page and check the Trends tab.');
 }
 
-main();
+main().catch(console.error);
