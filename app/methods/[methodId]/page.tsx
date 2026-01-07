@@ -179,6 +179,11 @@ function MethodDetailContent({ params }: { params: PageParams }) {
     fetchData();
   }, [user, methodId]);
 
+  // Modal State
+  const [showGoalModal, setShowGoalModal] = useState(false);
+  const [targetGoalTitle, setTargetGoalTitle] = useState<string | null>(null);
+  const [isGoalModalLoading, setIsGoalModalLoading] = useState(false);
+
   const handleToggleTrying = async () => {
     if (!method) return;
 
@@ -198,8 +203,15 @@ function MethodDetailContent({ params }: { params: PageParams }) {
           // Check if user has chosen the goal
           const goalRef = doc(db, 'users', user.uid, 'chosenGoals', method.goalId);
           const goalDoc = await getDoc(goalRef);
+          
           if (!goalDoc.exists()) {
-            alert("You must be working on the parent goal to try this method. Go to Goals to add it.");
+            // Fetch goal title for the modal
+            const methodGoalRef = doc(db, 'goals', method.goalId);
+            const methodGoalDoc = await getDoc(methodGoalRef);
+            const goalTitle = methodGoalDoc.exists() ? methodGoalDoc.data().title : 'Unknown Goal';
+            
+            setTargetGoalTitle(goalTitle);
+            setShowGoalModal(true);
             return;
           }
   
@@ -222,11 +234,36 @@ function MethodDetailContent({ params }: { params: PageParams }) {
            // Optional: Decrement local counter display (reverts previous increment)
            setMethod(prev => prev ? { ...prev, stats: { ...prev.stats, activeUsers: Math.max(0, prev.stats.activeUsers - 1) } } : null);
         } else {
-           // Guest doesn't need to check "Goal" prerequisites strictly? 
-           // Implementation plan says "Guests can Select or Try Goals and Methods". 
-           // For simplicity, let's allow trying method without explicitly adding Goal for guest, 
-           // OR we should auto-add the goal locally too? 
-           // Let's just toggle the method for now. 
+           // Guest Check for Goal Prerequisite
+           const localGoals = JSON.parse(localStorage.getItem('guest_chosenGoals') || '[]') as string[];
+           if (!localGoals.includes(method.goalId)) {
+                // Fetch goal title for the modal
+                // Since we are likely offline or guest, we try to find it in "local created goals" OR just fetch from firestore if possible?
+                // Actually, guest might be viewing a public goal from firestore. So we should fetch it.
+                // We reuse the same logic as user -> fetch goal doc to get title.
+                
+                try {
+                    const methodGoalRef = doc(db, 'goals', method.goalId);
+                    const methodGoalDoc = await getDoc(methodGoalRef);
+                    // If not found in firestore, maybe check local created goals?
+                    let goalTitle = methodGoalDoc.exists() ? methodGoalDoc.data().title : null;
+                    
+                    if (!goalTitle) {
+                         const localCreatedGoals = JSON.parse(localStorage.getItem('guest_createdGoals') || '[]') as any[];
+                         const found = localCreatedGoals.find(g => g.id === method.goalId);
+                         goalTitle = found ? found.title : 'Unknown Goal';
+                    }
+                    
+                    setTargetGoalTitle(goalTitle || 'Unknown Goal');
+                    setShowGoalModal(true);
+                    return;
+                } catch (e) {
+                     // Fallback if fetch fails
+                     setTargetGoalTitle('this Goal');
+                     setShowGoalModal(true);
+                     return;
+                }
+           }
            
            localMethods[methodId] = {
                status: 'active',
@@ -236,11 +273,66 @@ function MethodDetailContent({ params }: { params: PageParams }) {
            setMethod(prev => prev ? { ...prev, stats: { ...prev.stats, activeUsers: prev.stats.activeUsers + 1 } } : null);
         }
         localStorage.setItem('guest_chosenMethods', JSON.stringify(localMethods));
-        // Force UserDataContext update? Since it reads from localStorage, maybe we need to trigger a refresh if we want other pages to know.
-        // But for this page, local state is enough.
       }
     } catch (error) {
       console.error('Error toggling trying status:', error);
+    }
+  };
+
+  const handleAcceptReferenceGoal = async () => {
+    if (!method) return;
+    
+    setIsGoalModalLoading(true);
+    try {
+        if (user) {
+            // 1. Join Goal
+            const goalRef = doc(db, 'users', user.uid, 'chosenGoals', method.goalId);
+            await setDoc(goalRef, {
+                 addedAt: serverTimestamp(),
+            });
+            
+            // 2. Join Method
+            const chosenRef = doc(db, 'users', user.uid, 'chosenMethods', methodId);
+            const methodRef = doc(db, 'methods', methodId);
+    
+            await setDoc(chosenRef, {
+                 addedAt: serverTimestamp(),
+                 attempts: [],
+                 status: 'active',
+            });
+            
+            await updateDoc(methodRef, { 'stats.activeUsers': increment(1) });
+               
+            setIsTrying(true);
+            setMethod(prev => prev ? { ...prev, stats: { ...prev.stats, activeUsers: prev.stats.activeUsers + 1 } } : null);
+        } else {
+            // Guest Logic
+            
+            // 1. Join Goal
+             const localGoals = JSON.parse(localStorage.getItem('guest_chosenGoals') || '[]') as string[];
+             if (!localGoals.includes(method.goalId)) {
+                localGoals.push(method.goalId);
+                localStorage.setItem('guest_chosenGoals', JSON.stringify(localGoals));
+             }
+             
+            // 2. Join Method
+             const localMethods = JSON.parse(localStorage.getItem('guest_chosenMethods') || '{}');
+             localMethods[methodId] = {
+                   status: 'active',
+                   addedAt: new Date().toISOString()
+             };
+             localStorage.setItem('guest_chosenMethods', JSON.stringify(localMethods));
+             
+             setIsTrying(true);
+             setMethod(prev => prev ? { ...prev, stats: { ...prev.stats, activeUsers: prev.stats.activeUsers + 1 } } : null);
+        }
+
+        setShowGoalModal(false);
+    } catch (error) {
+        console.error("Error accepting goal and method:", error);
+        alert("Something went wrong. Please try again.");
+    } finally {
+        setIsGoalModalLoading(false);
     }
   };
 
@@ -829,10 +921,53 @@ function MethodDetailContent({ params }: { params: PageParams }) {
                    <h2 className="text-lg font-bold">User Journey</h2>
                    <button onClick={() => setJourneyUserId(null)} className="text-[var(--text-muted)] hover:text-[var(--text-primary)]">✕</button>
                </div>
-               <div className="p-6">
-                   <ReviewTrends reviews={reviews} currentUserId={journeyUserId} />
-               </div>
-           </div>
+                <div className="p-6">
+                    <ReviewTrends reviews={reviews} currentUserId={journeyUserId} />
+                </div>
+            </div>
+        </div>
+      )}
+
+      {/* Goal Prerequisite Modal */}
+      {showGoalModal && (
+        <div className="fixed inset-0 z-[100] bg-[var(--background)] flex items-center justify-center p-6 animate-fade-in">
+             <div className="max-w-xl w-full text-center">
+                 <p className="text-xl text-[var(--text-primary)] mb-8 leading-relaxed font-medium">
+                     In order to try a method, you must be trying the corresponding goal it belongs to. 
+                     <br />
+                     When you click Accept, we will set the goal as being tried.
+                 </p>
+                 
+                 <div className="bg-[var(--surface-subtle)] p-8 rounded-[var(--radius-lg)] mb-10 mx-auto text-left w-full max-w-md shadow-sm">
+                     <div className="mb-6">
+                         <span className="font-bold text-[var(--text-secondary)] uppercase tracking-wide text-xs block mb-2">Goal</span>
+                         <span className="text-[var(--primary)] font-bold text-2xl block">{targetGoalTitle}</span>
+                     </div>
+                     
+                     <div>
+                         <span className="font-bold text-[var(--text-secondary)] uppercase tracking-wide text-xs block mb-2">Method</span>
+                         <span className="text-[var(--primary)] font-bold text-2xl block">{method.title}</span>
+                     </div>
+                 </div>
+                 
+                 <div className="flex gap-4 justify-center max-w-md mx-auto">
+                     <Button 
+                         variant="ghost" 
+                         onClick={() => setShowGoalModal(false)}
+                         className="flex-1 py-4 text-base"
+                         disabled={isGoalModalLoading}
+                     >
+                         Cancel
+                     </Button>
+                     <Button 
+                         onClick={handleAcceptReferenceGoal}
+                         className="flex-1 py-4 text-base"
+                         isLoading={isGoalModalLoading}
+                     >
+                         Accept
+                     </Button>
+                 </div>
+             </div>
         </div>
       )}
     </div>

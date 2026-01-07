@@ -104,7 +104,24 @@ function MethodsPageContent({ params }: { params: PageParams }) {
     fetchData();
   }, [user, goalId]);
   
-  const handleToggleMethod = async (methodId: string) => {
+  // Modal State
+  const [isGoalChosen, setIsGoalChosen] = useState(false);
+  const [showGoalModal, setShowGoalModal] = useState(false);
+  const [targetMethodForModal, setTargetMethodForModal] = useState<{id: string, title: string} | null>(null);
+  const [isGoalModalLoading, setIsGoalModalLoading] = useState(false);
+
+  useEffect(() => {
+     if (user) {
+         getDoc(doc(db, 'users', user.uid, 'chosenGoals', goalId)).then(doc => {
+             setIsGoalChosen(doc.exists());
+         });
+     } else {
+         const localChosenGoals = JSON.parse(localStorage.getItem('guest_chosenGoals') || '[]');
+         setIsGoalChosen(localChosenGoals.includes(goalId));
+     }
+  }, [user, goalId]);
+
+  const toggleMethodLogic = async (methodId: string) => {
     const isChosen = chosenMethodIds.has(methodId);
     
     // Optimistic UI updates
@@ -147,6 +164,54 @@ function MethodsPageContent({ params }: { params: PageParams }) {
          }
          localStorage.setItem('guest_chosenMethods', JSON.stringify(localMethods));
     }
+  };
+
+  const handleToggleMethod = async (methodId: string) => {
+    const isChosen = chosenMethodIds.has(methodId);
+    
+    // If we are stopping trying, we don't need to check user goal status
+    if (isChosen) {
+        await toggleMethodLogic(methodId);
+        return;
+    }
+
+    // If we are starting to try, check if goal is chosen
+    if (!isGoalChosen) {
+        const method = methods.find(m => m.id === methodId);
+        if (method) {
+            setTargetMethodForModal({ id: method.id, title: method.title });
+            setShowGoalModal(true);
+        }
+        return;
+    }
+
+    await toggleMethodLogic(methodId);
+  };
+
+  const handleAcceptReferenceGoal = async () => {
+      if (!targetMethodForModal) return;
+      setIsGoalModalLoading(true);
+      try {
+          if (user) {
+              const goalRef = doc(db, 'users', user.uid, 'chosenGoals', goalId);
+              await setDoc(goalRef, { addedAt: serverTimestamp() });
+          } else {
+              const localGoals = JSON.parse(localStorage.getItem('guest_chosenGoals') || '[]');
+              if (!localGoals.includes(goalId)) {
+                  localGoals.push(goalId);
+                  localStorage.setItem('guest_chosenGoals', JSON.stringify(localGoals));
+              }
+          }
+          setIsGoalChosen(true);
+          
+          await toggleMethodLogic(targetMethodForModal.id);
+          setShowGoalModal(false);
+          setTargetMethodForModal(null);
+      } catch (error) {
+          console.error("Error accepting goal", error);
+      } finally {
+          setIsGoalModalLoading(false);
+      }
   };
   
   const addResource = () => {
@@ -206,11 +271,20 @@ function MethodsPageContent({ params }: { params: PageParams }) {
             createdBy: user.uid,
             createdAt: new Date(),
             stats: { activeUsers: 1, avgRating: 0, reviewCount: 0 },
-          };
+          } as Method;
           
           setMethods(prev => [createdMethod, ...prev]);
           
           // Auto-choose the new method
+          // IMPORTANT: Auto-choosing method implies choosing goal too? 
+          // Usually create method implies you are working on the goal.
+          // Let's ensure goal is chosen if it wasn't.
+          if (!isGoalChosen) {
+             const goalRef = doc(db, 'users', user.uid, 'chosenGoals', goalId);
+             await setDoc(goalRef, { addedAt: serverTimestamp() });
+             setIsGoalChosen(true);
+          }
+
           await setDoc(doc(db, 'users', user.uid, 'chosenMethods', methodDoc.id), {
             addedAt: serverTimestamp(),
             attempts: [],
@@ -231,12 +305,22 @@ function MethodsPageContent({ params }: { params: PageParams }) {
             createdAt: new Date(),
             stats: { activeUsers: 1, avgRating: 0, reviewCount: 0 },
             isPrivate: isPrivateMode,
-          };
+          } as Method;
           
           // Save locally
           const localCreated = JSON.parse(localStorage.getItem('guest_createdMethods') || '[]') as Method[];
           localCreated.push(createdMethod);
           localStorage.setItem('guest_createdMethods', JSON.stringify(localCreated));
+          
+          // Auto-choose goal if needed locally
+          if (!isGoalChosen) {
+             const localGoals = JSON.parse(localStorage.getItem('guest_chosenGoals') || '[]');
+             if (!localGoals.includes(goalId)) {
+                localGoals.push(goalId);
+                localStorage.setItem('guest_chosenGoals', JSON.stringify(localGoals));
+             }
+             setIsGoalChosen(true);
+          }
           
           // Auto-choose locally
           const localChosen = JSON.parse(localStorage.getItem('guest_chosenMethods') || '{}');
@@ -503,6 +587,52 @@ function MethodsPageContent({ params }: { params: PageParams }) {
           </div>
         )}
       </main>
+
+      {/* Goal Prerequisite Modal */}
+      {showGoalModal && (
+        <div className="fixed inset-0 z-[100] bg-[var(--background)] flex items-center justify-center p-6 animate-fade-in">
+             <div className="max-w-xl w-full text-center">
+                 <p className="text-xl text-[var(--text-primary)] mb-8 leading-relaxed font-medium">
+                     In order to try a method, you must be trying the corresponding goal it belongs to. 
+                     <br />
+                     When you click Accept, we will set the goal as being tried.
+                 </p>
+                 
+                 <div className="bg-[var(--surface-subtle)] p-8 rounded-[var(--radius-lg)] mb-10 mx-auto text-left w-full max-w-md shadow-sm">
+                     <div className="mb-6">
+                         <span className="font-bold text-[var(--text-secondary)] uppercase tracking-wide text-xs block mb-2">Goal</span>
+                         <span className="text-[var(--primary)] font-bold text-2xl block">{goal?.title}</span>
+                     </div>
+                     
+                     <div>
+                         <span className="font-bold text-[var(--text-secondary)] uppercase tracking-wide text-xs block mb-2">Method</span>
+                         <span className="text-[var(--primary)] font-bold text-2xl block">{targetMethodForModal?.title}</span>
+                     </div>
+                 </div>
+                 
+                 <div className="flex gap-4 justify-center max-w-md mx-auto">
+                     <Button 
+                         variant="ghost" 
+                         onClick={() => {
+                             setShowGoalModal(false);
+                             setTargetMethodForModal(null);
+                         }}
+                         className="flex-1 py-4 text-base"
+                         disabled={isGoalModalLoading}
+                     >
+                         Cancel
+                     </Button>
+                     <Button 
+                         onClick={handleAcceptReferenceGoal}
+                         className="flex-1 py-4 text-base"
+                         isLoading={isGoalModalLoading}
+                     >
+                         Accept
+                     </Button>
+                 </div>
+             </div>
+        </div>
+      )}
     </div>
   );
 }
