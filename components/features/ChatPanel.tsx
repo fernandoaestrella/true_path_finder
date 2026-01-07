@@ -7,6 +7,8 @@ import { useAuth } from '@/lib/contexts/AuthContext';
 import { Button } from '@/components/ui/Button';
 import { Input } from '@/components/ui/Input';
 import { useLocalStorage } from '@/lib/hooks/useLocalStorage';
+import { useRouter } from 'next/navigation';
+import Link from 'next/link';
 
 interface ChatMessage {
   id: string;
@@ -24,6 +26,7 @@ interface ChatPanelProps {
 
 export default function ChatPanel({ eventId, batchNumber, isEnabled }: ChatPanelProps) {
   const { user, userData } = useAuth();
+  const router = useRouter();
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   // Use local storage to persist draft message if user navigates away
   const [newMessage, setNewMessage, clearNewMessage] = useLocalStorage(`chat_draft_${eventId}_${batchNumber}`, '');
@@ -33,7 +36,7 @@ export default function ChatPanel({ eventId, batchNumber, isEnabled }: ChatPanel
 
   // Subscribe to messages
   useEffect(() => {
-    if (!eventId || !batchNumber) return;
+    if (!eventId || !batchNumber || !user) return;
     
     const messagesRef = ref(rtdb, chatPath);
     
@@ -60,7 +63,7 @@ export default function ChatPanel({ eventId, batchNumber, isEnabled }: ChatPanel
     });
 
     return () => unsubscribe();
-  }, [eventId, batchNumber, chatPath]);
+  }, [eventId, batchNumber, chatPath, user]);
 
   // Auto-scroll to bottom
   useEffect(() => {
@@ -100,6 +103,30 @@ export default function ChatPanel({ eventId, batchNumber, isEnabled }: ChatPanel
     const date = new Date(timestamp);
     return date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
   };
+
+  if (!user) {
+    return (
+      <div className="bg-[var(--surface-subtle)] rounded-2xl shadow-sm flex flex-col h-[500px] items-center justify-center p-6 text-center">
+         <div className="max-w-xs space-y-4">
+            <div className="bg-[var(--surface-muted)] w-12 h-12 rounded-full flex items-center justify-center mx-auto mb-2">
+                <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="text-[var(--text-muted)]">
+                  <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"></path>
+                </svg>
+            </div>
+            <h3 className="text-xl font-semibold text-[var(--text-primary)]">Join the Conversation</h3>
+            <p className="text-[var(--text-secondary)]">
+              Create an account to chat with your batch members during events.
+            </p>
+            <Button onClick={() => router.push('/signup')} className="w-full">
+              Sign Up to Chat
+            </Button>
+            <p className="text-xs text-[var(--text-muted)]">
+               Already have an account? <Link href="/login" className="underline hover:text-[var(--text-primary)]">Log in</Link>
+            </p>
+         </div>
+      </div>
+    );
+  }
 
   if (!isEnabled) {
     return (

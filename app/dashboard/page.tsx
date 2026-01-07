@@ -21,11 +21,8 @@ function DashboardContent() {
   const [password, setPassword] = useState('');
   
   // Redirect if not authenticated
-  useEffect(() => {
-    if (!authLoading && !user) {
-      router.push('/login');
-    }
-  }, [authLoading, user, router]);
+  // Redirect if not authenticated - REMOVED for Guest Mode
+  // Guests can view dashboard.
 
   // Check for daily intention logic
   useEffect(() => {
@@ -52,15 +49,28 @@ function DashboardContent() {
      await refreshUserData();
   };
 
-  // Filter out private content for public dashboard
+  // Filter out private content for the main dashboard
   const publicMethodsByGoal = methodsByGoal
-    .map(group => ({
-      goal: group.goal,
-      methods: group.methods.filter(m => m.isPrivate !== true)
-    }))
-    .filter(group => group.goal.isPrivate !== true && group.methods.length > 0);
+    .map(group => {
+      // 1. If goal is private, skip it entirely
+      if (group.goal.isPrivate) return null;
+      
+      // 2. Filter out private methods from public goals
+      const publicMethods = group.methods.filter(m => !m.isPrivate);
+      
+      // 3. If no methods remain (and we usually only show goals with chosen methods here), skip
+      // However, the methodsByGoal structure usually implies chosen methods exist. 
+      // If a user has chosen a public goal but only private methods, we closely treat it.
+      if (publicMethods.length === 0) return null;
+      
+      return {
+        ...group,
+        methods: publicMethods
+      };
+    })
+    .filter((group): group is typeof methodsByGoal[0] => group !== null);
 
-  const publicEvents = myEvents.filter(e => e.isPrivate !== true);
+  const publicEvents = myEvents.filter(e => !e.isPrivate);
   
   // Show loading state only during initial auth check or if data is loading AND we have no data yet
   if (authLoading || (dataLoading && methodsByGoal.length === 0)) {

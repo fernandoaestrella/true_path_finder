@@ -54,15 +54,12 @@ function MethodDetailContent({ params }: { params: PageParams }) {
   const [isUpdating, setIsUpdating] = useState(false);
   
   // Redirect if not authenticated
-  useEffect(() => {
-    if (!authLoading && !user) {
-      router.push('/login');
-    }
-  }, [authLoading, user, router]);
+  // Redirect if not authenticated - REMOVED for Guest Mode
+  // Guests can view methods. Protected actions are handled individually.
   
   // Fetch method and reviews
+  // Fetch method and reviews
   useEffect(() => {
-    if (!user) return;
     
     const fetchData = async () => {
       try {
@@ -76,6 +73,16 @@ function MethodDetailContent({ params }: { params: PageParams }) {
             stats: methodDoc.data().stats || { activeUsers: 0, avgRating: 0, reviewCount: 0 },
             suggestedMinimum: methodDoc.data().suggestedMinimum || { type: 'days', value: 7 },
           } as Method);
+        } else {
+             // Check local storage for guest created methods
+             const localCreated = JSON.parse(localStorage.getItem('guest_createdMethods') || '[]') as Method[];
+             const found = localCreated.find(m => m.id === methodId);
+             if (found) {
+                 setMethod({
+                     ...found,
+                     createdAt: new Date(found.createdAt),
+                 });
+             }
         }
         
         // Fetch reviews
@@ -93,7 +100,14 @@ function MethodDetailContent({ params }: { params: PageParams }) {
           updatedAt: doc.data().updatedAt?.toDate() || new Date(),
         })) as Review[];
         
-        setReviews(methodReviews);
+        // Fetch guest reviews for this method
+        if (!user) {
+            const localReviews = JSON.parse(localStorage.getItem('guest_reviews') || '[]') as Review[];
+            const myLocalReviews = localReviews.filter(r => r.methodId === methodId);
+            setReviews([...myLocalReviews, ...methodReviews]);
+        } else {
+            setReviews(methodReviews);
+        }
         
         // Fetch events
         const eventsRef = collection(db, 'events');
@@ -133,14 +147,26 @@ function MethodDetailContent({ params }: { params: PageParams }) {
         setEvents(methodEvents);
 
         // Check if user is trying this method
-        const chosenRef = doc(db, 'users', user.uid, 'chosenMethods', methodId);
-        const chosenDoc = await getDoc(chosenRef);
-        if (chosenDoc.exists()) {
-           setIsTrying(true);
-           setSavedShortcut(chosenDoc.data().shortcutResourceId || null);
+        if (user) {
+            const chosenRef = doc(db, 'users', user.uid, 'chosenMethods', methodId);
+            const chosenDoc = await getDoc(chosenRef);
+            if (chosenDoc.exists()) {
+               setIsTrying(true);
+               setSavedShortcut(chosenDoc.data().shortcutResourceId || null);
+            } else {
+               setIsTrying(false);
+               setSavedShortcut(null);
+            }
         } else {
-           setIsTrying(false);
-           setSavedShortcut(null);
+            // Guest Mode
+            const guestMethods = JSON.parse(localStorage.getItem('guest_chosenMethods') || '{}');
+            if (guestMethods[methodId]) {
+                setIsTrying(true);
+                setSavedShortcut(guestMethods[methodId].shortcutResourceId || null);
+            } else {
+                setIsTrying(false);
+                setSavedShortcut(null);
+            }
         }
 
       } catch (error) {
@@ -154,36 +180,64 @@ function MethodDetailContent({ params }: { params: PageParams }) {
   }, [user, methodId]);
 
   const handleToggleTrying = async () => {
-    if (!user || !method) return;
+    if (!method) return;
 
     try {
-      const chosenRef = doc(db, 'users', user.uid, 'chosenMethods', methodId);
-      const methodRef = doc(db, 'methods', methodId);
-
-      if (isTrying) {
-        // Stop trying
-        await deleteDoc(chosenRef);
-        await updateDoc(methodRef, { 'stats.activeUsers': increment(-1) });
-        setIsTrying(false);
-        setMethod(prev => prev ? { ...prev, stats: { ...prev.stats, activeUsers: prev.stats.activeUsers - 1 } } : null);
-      } else {
-        // Start trying
-        // Check if user has chosen the goal
-        const goalRef = doc(db, 'users', user.uid, 'chosenGoals', method.goalId);
-        const goalDoc = await getDoc(goalRef);
-        if (!goalDoc.exists()) {
-          alert("You must be working on the parent goal to try this method. Go to Goals to add it.");
-          return;
+      if (user) {
+        const chosenRef = doc(db, 'users', user.uid, 'chosenMethods', methodId);
+        const methodRef = doc(db, 'methods', methodId);
+  
+        if (isTrying) {
+          // Stop trying
+          await deleteDoc(chosenRef);
+          await updateDoc(methodRef, { 'stats.activeUsers': increment(-1) });
+          setIsTrying(false);
+          setMethod(prev => prev ? { ...prev, stats: { ...prev.stats, activeUsers: prev.stats.activeUsers - 1 } } : null);
+        } else {
+          // Start trying
+          // Check if user has chosen the goal
+          const goalRef = doc(db, 'users', user.uid, 'chosenGoals', method.goalId);
+          const goalDoc = await getDoc(goalRef);
+          if (!goalDoc.exists()) {
+            alert("You must be working on the parent goal to try this method. Go to Goals to add it.");
+            return;
+          }
+  
+          await setDoc(chosenRef, {
+            addedAt: serverTimestamp(),
+            attempts: [],
+            status: 'active',
+          });
+          await updateDoc(methodRef, { 'stats.activeUsers': increment(1) });
+          setIsTrying(true);
+          setMethod(prev => prev ? { ...prev, stats: { ...prev.stats, activeUsers: prev.stats.activeUsers + 1 } } : null);
         }
-
-        await setDoc(chosenRef, {
-          addedAt: serverTimestamp(),
-          attempts: [],
-          status: 'active',
-        });
-        await updateDoc(methodRef, { 'stats.activeUsers': increment(1) });
-        setIsTrying(true);
-        setMethod(prev => prev ? { ...prev, stats: { ...prev.stats, activeUsers: prev.stats.activeUsers + 1 } } : null);
+      } else {
+        // Guest Logic
+        const localMethods = JSON.parse(localStorage.getItem('guest_chosenMethods') || '{}');
+        
+        if (isTrying) {
+           delete localMethods[methodId];
+           setIsTrying(false);
+           // Optional: Decrement local counter display (reverts previous increment)
+           setMethod(prev => prev ? { ...prev, stats: { ...prev.stats, activeUsers: Math.max(0, prev.stats.activeUsers - 1) } } : null);
+        } else {
+           // Guest doesn't need to check "Goal" prerequisites strictly? 
+           // Implementation plan says "Guests can Select or Try Goals and Methods". 
+           // For simplicity, let's allow trying method without explicitly adding Goal for guest, 
+           // OR we should auto-add the goal locally too? 
+           // Let's just toggle the method for now. 
+           
+           localMethods[methodId] = {
+               status: 'active',
+               addedAt: new Date().toISOString()
+           };
+           setIsTrying(true);
+           setMethod(prev => prev ? { ...prev, stats: { ...prev.stats, activeUsers: prev.stats.activeUsers + 1 } } : null);
+        }
+        localStorage.setItem('guest_chosenMethods', JSON.stringify(localMethods));
+        // Force UserDataContext update? Since it reads from localStorage, maybe we need to trigger a refresh if we want other pages to know.
+        // But for this page, local state is enough.
       }
     } catch (error) {
       console.error('Error toggling trying status:', error);
@@ -198,12 +252,19 @@ function MethodDetailContent({ params }: { params: PageParams }) {
   };
 
   const handleSaveShortcut = async () => {
-       if (!user) return;
-       const chosenRef = doc(db, 'users', user.uid, 'chosenMethods', methodId);
-       
        try {
            if (selectedShortcutUi) {
-               await updateDoc(chosenRef, { shortcutResourceId: selectedShortcutUi });
+               if (user) {
+                    const chosenRef = doc(db, 'users', user.uid, 'chosenMethods', methodId);
+                    await updateDoc(chosenRef, { shortcutResourceId: selectedShortcutUi });
+               } else {
+                   // Guest Logic
+                   const localMethods = JSON.parse(localStorage.getItem('guest_chosenMethods') || '{}');
+                   if (localMethods[methodId]) {
+                       localMethods[methodId].shortcutResourceId = selectedShortcutUi;
+                       localStorage.setItem('guest_chosenMethods', JSON.stringify(localMethods));
+                   }
+               }
                setSavedShortcut(selectedShortcutUi);
            }
        } catch (error) {
@@ -215,52 +276,82 @@ function MethodDetailContent({ params }: { params: PageParams }) {
 
   const handleSubmitReview = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!user || !reviewContent.trim()) return;
+    if (!reviewContent.trim()) return;
     
     setIsSubmitting(true);
     
     try {
-      const reviewData = {
-        methodId,
-        userId: user.uid,
-        score: Number(reviewScore), // Ensure it's a number
-        content: reviewContent.trim(),
-        attemptsSummary: { count: 0, totalDurationMinutes: 0 },
-        metMinimum: false,
-        createdAt: serverTimestamp(),
-        updatedAt: serverTimestamp(),
-      };
-      
-      const reviewDoc = await addDoc(collection(db, 'reviews'), reviewData);
-      
-      // Update method stats
-      const newReviewCount = (method?.stats.reviewCount || 0) + 1;
-      const currentTotal = (method?.stats.avgRating || 0) * (method?.stats.reviewCount || 0);
-      const newAvgRating = (currentTotal + reviewScore) / newReviewCount;
-      
-      await updateDoc(doc(db, 'methods', methodId), {
-        'stats.reviewCount': newReviewCount,
-        'stats.avgRating': newAvgRating,
-      });
-      
-      // Add to local state
-      const newReview: Review = {
-        id: reviewDoc.id,
-        methodId,
-        userId: user.uid,
-        score: reviewScore,
-        content: reviewContent.trim(),
-        attemptsSummary: { count: 0, totalDurationMinutes: 0 },
-        metMinimum: false,
-        createdAt: new Date(),
-        updatedAt: new Date(),
-      };
-      
-      setReviews(prev => [newReview, ...prev]);
-      setMethod(prev => prev ? {
-        ...prev,
-        stats: { ...prev.stats, reviewCount: newReviewCount, avgRating: newAvgRating }
-      } : null);
+      if (user) {
+          const reviewData = {
+            methodId,
+            userId: user.uid,
+            score: Number(reviewScore), // Ensure it's a number
+            content: reviewContent.trim(),
+            attemptsSummary: { count: 0, totalDurationMinutes: 0 },
+            metMinimum: false,
+            createdAt: serverTimestamp(),
+            updatedAt: serverTimestamp(),
+          };
+          
+          const reviewDoc = await addDoc(collection(db, 'reviews'), reviewData);
+          
+          // Update method stats
+          const newReviewCount = (method?.stats.reviewCount || 0) + 1;
+          const currentTotal = (method?.stats.avgRating || 0) * (method?.stats.reviewCount || 0);
+          const newAvgRating = (currentTotal + reviewScore) / newReviewCount;
+          
+          await updateDoc(doc(db, 'methods', methodId), {
+            'stats.reviewCount': newReviewCount,
+            'stats.avgRating': newAvgRating,
+          });
+          
+          // Add to local state
+          const newReview: Review = {
+            id: reviewDoc.id,
+            methodId,
+            userId: user.uid,
+            score: reviewScore,
+            content: reviewContent.trim(),
+            attemptsSummary: { count: 0, totalDurationMinutes: 0 },
+            metMinimum: false,
+            createdAt: new Date(),
+            updatedAt: new Date(),
+          };
+          
+          setReviews(prev => [newReview, ...prev]);
+          setMethod(prev => prev ? {
+            ...prev,
+            stats: { ...prev.stats, reviewCount: newReviewCount, avgRating: newAvgRating }
+          } : null);
+      } else {
+          // Guest Logic
+          const newReview: Review = {
+            id: crypto.randomUUID(),
+            methodId,
+            userId: 'guest',
+            score: reviewScore,
+            content: reviewContent.trim(),
+            attemptsSummary: { count: 0, totalDurationMinutes: 0 },
+            metMinimum: false,
+            createdAt: new Date(),
+            updatedAt: new Date(),
+          };
+          
+          const localReviews = JSON.parse(localStorage.getItem('guest_reviews') || '[]') as Review[];
+          localReviews.push(newReview);
+          localStorage.setItem('guest_reviews', JSON.stringify(localReviews));
+          
+          // Update local state and stats
+          const newReviewCount = (method?.stats.reviewCount || 0) + 1;
+          const currentTotal = (method?.stats.avgRating || 0) * (method?.stats.reviewCount || 0);
+          const newAvgRating = (currentTotal + reviewScore) / newReviewCount;
+
+          setReviews(prev => [newReview, ...prev]);
+          setMethod(prev => prev ? {
+            ...prev,
+            stats: { ...prev.stats, reviewCount: newReviewCount, avgRating: newAvgRating }
+          } : null);
+      }
       
       // Reset form
       setReviewContent('');
@@ -625,10 +716,15 @@ function MethodDetailContent({ params }: { params: PageParams }) {
             {showReviewForm && (
               <Card className="mb-6 animate-fade-in">
                 <CardHeader>
-                  <CardTitle>Write Your Review</CardTitle>
+                  <CardTitle>{user ? 'Write Your Review' : 'Write Private Note (Local Only)'}</CardTitle>
                 </CardHeader>
                 <CardContent>
                   <form onSubmit={handleSubmitReview} className="space-y-4">
+                    {!user && (
+                        <div className="bg-[var(--surface-subtle)] p-3 rounded-md text-sm text-[var(--text-secondary)] mb-2">
+                             Note: This review is private and saved only to this device. <Link href="/signup" className="text-[var(--primary)] hover:underline">Sign Up</Link> to post public reviews.
+                        </div>
+                    )}
                     <div>
                       <label className="block text-sm font-medium text-[var(--text-primary)] mb-2">
                         Your Rating
@@ -656,7 +752,7 @@ function MethodDetailContent({ params }: { params: PageParams }) {
                       isLoading={isSubmitting}
                       disabled={reviewScore === 0}
                     >
-                      Submit Review
+                      {user ? 'Submit Review' : 'Save Private Note'}
                     </Button>
                   </form>
                 </CardContent>
@@ -698,7 +794,13 @@ function MethodDetailContent({ params }: { params: PageParams }) {
           <div className="animate-fade-in">
             {/* Create Event Button */}
             <div className="mb-6">
-              <Button onClick={() => router.push(`/events/create?methodId=${methodId}${isPrivateMode ? '&private=true' : ''}`)}>
+              <Button onClick={() => {
+                  if (user) {
+                     router.push(`/events/create?methodId=${methodId}${isPrivateMode ? '&private=true' : ''}`);
+                  } else {
+                     router.push('/signup');
+                  }
+              }}>
                 + Create Event
               </Button>
             </div>

@@ -21,11 +21,8 @@ function MyCaveContent() {
   const [password, setPassword] = useState('');
   
   // Redirect if not authenticated
-  useEffect(() => {
-    if (!authLoading && !user) {
-      router.push('/login');
-    }
-  }, [authLoading, user, router]);
+  // Redirect if not authenticated - REMOVED for Guest Mode
+  // Guests can view My Cave.
 
   // Filter to only private content
   const privateMethodsByGoal = methodsByGoal
@@ -134,14 +131,14 @@ function MyCaveContent() {
       <main className="container py-12 space-y-12">
         {/* Private indicator banner */}
         <div className="text-center py-4 px-6 bg-[var(--surface-subtle)] rounded-[var(--radius-interactive)]">
-          <p className="text-[var(--text-secondary)] flex items-center justify-center gap-2">
+          <div className="text-[var(--text-secondary)] flex items-center justify-center gap-2">
             <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
               <rect x="3" y="11" width="18" height="11" rx="2" ry="2" />
               <path d="M7 11V7a5 5 0 0 1 10 0v4" />
             </svg>
             Everything in My Cave is private - only you can see it
             <InfoTooltip content="The cave gets darker the deeper you go. To exit the cave, return to this cave entrance" />
-          </p>
+          </div>
         </div>
 
         <section>

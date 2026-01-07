@@ -12,11 +12,7 @@ export default function IntentionPage() {
   
   const [selectedGoalIds, setSelectedGoalIds] = useState<string[]>([]);
   
-  useEffect(() => {
-    if (!authLoading && !user) {
-      router.push('/login');
-    }
-  }, [authLoading, user, router]);
+  // Redirect if not authenticated - REMOVED for Guest Mode
   
   const handleContinue = () => {
     // Store intention completion

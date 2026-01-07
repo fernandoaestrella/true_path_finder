@@ -387,7 +387,7 @@ function EventPageContent() {
                {event && getNextEventOccurrence(event) && (
                  <div className="flex flex-col sm:flex-row gap-4 items-center">
                    <Button
-                      onClick={handleRsvp}
+                      onClick={() => user ? handleRsvp() : router.push('/signup')}
                       variant="secondary"
                       className={`min-w-[140px] ${isRsvped ? 'bg-green-100 text-green-700 hover:bg-green-200' : ''}`}
                       disabled={isLoadingRsvp}
@@ -471,7 +471,7 @@ function EventPageContent() {
                     {batches.map((batch) => (
                       <button
                         key={batch.batchNumber}
-                        onClick={() => handleJoinBatch(batch.batchNumber)}
+                        onClick={() => user ? handleJoinBatch(batch.batchNumber) : router.push('/signup')}
                         disabled={isJoining || (batch.participants.length >= event.maxPerBatch && !(batches.every(b => b.participants.length >= event.maxPerBatch) && batch.participants.length <= APP_CONFIG.BATCH_OVERFLOW_THRESHOLD))} 
                         className={`
                           p-4 rounded-[var(--radius-interactive)] transition-all text-left shadow-sm
@@ -490,7 +490,7 @@ function EventPageContent() {
                     
                     {(batches.length === 0 || batches[batches.length - 1].participants.length >= event.maxPerBatch) && (
                       <button
-                      onClick={() => handleJoinBatch(batches.length + 1)}
+                      onClick={() => user ? handleJoinBatch(batches.length + 1) : router.push('/signup')}
                       disabled={isJoining}
                       className="p-4 rounded-[var(--radius-interactive)] bg-[var(--surface-subtle)] text-[var(--text-secondary)] hover:text-[var(--primary)] transition-all flex items-center justify-center flex-col shadow-sm"
                     >

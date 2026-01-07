@@ -12,7 +12,7 @@ interface HeaderProps {
 }
 
 export function Header({ currentPage = 'other', timerExtra, isOnMyCaveDashboard = false }: HeaderProps) {
-  const { logout } = useAuth();
+  const { logout, user } = useAuth();
   const { minutes, seconds, isPaused } = useSessionTimer();
   const [isMenuOpen, setIsMenuOpen] = useState(false);
 
@@ -136,39 +136,67 @@ export function Header({ currentPage = 'other', timerExtra, isOnMyCaveDashboard 
           </div>
           
           <nav className="space-y-2">
-            <a
-              href="/profile"
-              className="w-full flex items-center gap-3 px-4 py-3 rounded-[var(--radius-interactive)] bg-[var(--surface-subtle)] hover:bg-[var(--primary-light)] cursor-pointer transition-colors text-[var(--text-primary)]"
-            >
-              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2" />
-                <circle cx="12" cy="7" r="4" />
-              </svg>
-              <span>Profile</span>
-            </a>
-
-            <a
-              href="/about"
-              className="w-full flex items-center gap-3 px-4 py-3 rounded-[var(--radius-interactive)] bg-[var(--surface-subtle)] hover:bg-[var(--primary-light)] cursor-pointer transition-colors text-[var(--text-primary)]"
-            >
-              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                <circle cx="12" cy="12" r="10" />
-                <line x1="12" y1="16" x2="12" y2="12" />
-                <line x1="12" y1="8" x2="12.01" y2="8" />
-              </svg>
-              <span>About</span>
-            </a>
-            
-            <button
-              onClick={() => {
-                setIsMenuOpen(false);
-                logout();
-              }}
-              className="w-full flex items-center gap-3 px-4 py-3 rounded-[var(--radius-interactive)] bg-[var(--surface-subtle)] hover:bg-[var(--primary-light)] cursor-pointer transition-colors text-[var(--text-primary)]"
-            >
-              <LogoutIcon size={20} />
-              <span>Logout</span>
-            </button>
+            {!user ? (
+               <>
+                 <a
+                    href="/about"
+                    className="w-full flex items-center gap-3 px-4 py-3 rounded-[var(--radius-interactive)] bg-[var(--surface-subtle)] hover:bg-[var(--primary-light)] cursor-pointer transition-colors text-[var(--text-primary)]"
+                  >
+                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                      <circle cx="12" cy="12" r="10" />
+                      <line x1="12" y1="16" x2="12" y2="12" />
+                      <line x1="12" y1="8" x2="12.01" y2="8" />
+                    </svg>
+                    <span>About</span>
+                  </a>
+                  <a
+                    href="/signup"
+                    className="w-full flex items-center gap-3 px-4 py-3 rounded-[var(--radius-interactive)] bg-[var(--surface-subtle)] hover:bg-[var(--primary-light)] cursor-pointer transition-colors text-[var(--text-primary)]"
+                  >
+                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                      <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2" />
+                      <circle cx="12" cy="7" r="4" />
+                    </svg>
+                    <span>Create Account</span>
+                  </a>
+               </>
+            ) : (
+                <>
+                  <a
+                    href="/profile"
+                    className="w-full flex items-center gap-3 px-4 py-3 rounded-[var(--radius-interactive)] bg-[var(--surface-subtle)] hover:bg-[var(--primary-light)] cursor-pointer transition-colors text-[var(--text-primary)]"
+                  >
+                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                      <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2" />
+                      <circle cx="12" cy="7" r="4" />
+                    </svg>
+                    <span>Profile</span>
+                  </a>
+      
+                  <a
+                    href="/about"
+                    className="w-full flex items-center gap-3 px-4 py-3 rounded-[var(--radius-interactive)] bg-[var(--surface-subtle)] hover:bg-[var(--primary-light)] cursor-pointer transition-colors text-[var(--text-primary)]"
+                  >
+                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                      <circle cx="12" cy="12" r="10" />
+                      <line x1="12" y1="16" x2="12" y2="12" />
+                      <line x1="12" y1="8" x2="12.01" y2="8" />
+                    </svg>
+                    <span>About</span>
+                  </a>
+                  
+                  <button
+                    onClick={() => {
+                      setIsMenuOpen(false);
+                      logout();
+                    }}
+                    className="w-full flex items-center gap-3 px-4 py-3 rounded-[var(--radius-interactive)] bg-[var(--surface-subtle)] hover:bg-[var(--primary-light)] cursor-pointer transition-colors text-[var(--text-primary)]"
+                  >
+                    <LogoutIcon size={20} />
+                    <span>Logout</span>
+                  </button>
+                </>
+            )}
           </nav>
         </div>
       </div>

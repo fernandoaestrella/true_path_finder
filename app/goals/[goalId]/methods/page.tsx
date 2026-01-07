@@ -37,15 +37,10 @@ function MethodsPageContent({ params }: { params: PageParams }) {
   const [isCreating, setIsCreating] = useState(false);
   
   // Redirect if not authenticated
-  useEffect(() => {
-    if (!authLoading && !user) {
-      router.push('/login');
-    }
-  }, [authLoading, user, router]);
+  // Redirect if not authenticated - REMOVED for Guest Mode
   
   // Fetch goal and methods
   useEffect(() => {
-    if (!user) return;
     
     const fetchData = async () => {
       try {
@@ -57,12 +52,22 @@ function MethodsPageContent({ params }: { params: PageParams }) {
             ...goalDoc.data(),
             createdAt: goalDoc.data().createdAt?.toDate() || new Date(),
           } as Goal);
+        } else {
+             // Guest: check local storage
+             const localGoals = JSON.parse(localStorage.getItem('guest_createdGoals') || '[]') as Goal[];
+             const foundGoal = localGoals.find(g => g.id === goalId);
+             if (foundGoal) {
+                 setGoal({
+                     ...foundGoal,
+                     createdAt: new Date(foundGoal.createdAt),
+                 });
+             }
         }
         
         // Fetch all methods for this goal
         const methodsRef = collection(db, 'methods');
         const methodsSnap = await getDocs(methodsRef);
-        const goalMethods = methodsSnap.docs
+        let goalMethods = methodsSnap.docs
           .filter(doc => doc.data().goalId === goalId)
           .map(doc => ({
             id: doc.id,
@@ -71,13 +76,24 @@ function MethodsPageContent({ params }: { params: PageParams }) {
             stats: doc.data().stats || { activeUsers: 0, avgRating: 0, reviewCount: 0 },
           })) as Method[];
         
+        if (user) {
+            const chosenRef = collection(db, 'users', user.uid, 'chosenMethods');
+            const chosenSnap = await getDocs(chosenRef);
+            const chosenIds = new Set(chosenSnap.docs.map(doc => doc.id));
+            setChosenMethodIds(chosenIds);
+        } else {
+             // Guest: Add local created methods
+             const localCreated = JSON.parse(localStorage.getItem('guest_createdMethods') || '[]') as Method[];
+             const myLocalMethods = localCreated.filter(m => m.goalId === goalId);
+             goalMethods = [...myLocalMethods, ...goalMethods];
+             
+             // Guest: Fetch chosen
+             const localChosen = JSON.parse(localStorage.getItem('guest_chosenMethods') || '{}');
+             setChosenMethodIds(new Set(Object.keys(localChosen)));
+        }
+        
         setMethods(goalMethods);
         
-        // Fetch user's chosen methods
-        const chosenRef = collection(db, 'users', user.uid, 'chosenMethods');
-        const chosenSnap = await getDocs(chosenRef);
-        const chosenIds = new Set(chosenSnap.docs.map(doc => doc.id));
-        setChosenMethodIds(chosenIds);
       } catch (error) {
         console.error('Error fetching data:', error);
       } finally {
@@ -89,35 +105,47 @@ function MethodsPageContent({ params }: { params: PageParams }) {
   }, [user, goalId]);
   
   const handleToggleMethod = async (methodId: string) => {
-    if (!user) return;
+    const isChosen = chosenMethodIds.has(methodId);
     
-    const chosenRef = doc(db, 'users', user.uid, 'chosenMethods', methodId);
-    const methodRef = doc(db, 'methods', methodId);
+    // Optimistic UI updates
+    setChosenMethodIds(prev => {
+       const next = new Set(prev);
+       if (isChosen) next.delete(methodId);
+       else next.add(methodId);
+       return next;
+    });
     
-    if (chosenMethodIds.has(methodId)) {
-      // Unchoose
-      await deleteDoc(chosenRef);
-      await updateDoc(methodRef, { 'stats.activeUsers': increment(-1) });
-      setChosenMethodIds(prev => {
-        const next = new Set(prev);
-        next.delete(methodId);
-        return next;
-      });
-      setMethods(prev => prev.map(m => 
-        m.id === methodId ? { ...m, stats: { ...m.stats, activeUsers: m.stats.activeUsers - 1 } } : m
-      ));
+    setMethods(prev => prev.map(m => 
+        m.id === methodId ? { ...m, stats: { ...m.stats, activeUsers: m.stats.activeUsers + (isChosen ? -1 : 1) } } : m
+    ));
+
+    if (user) {
+         const chosenRef = doc(db, 'users', user.uid, 'chosenMethods', methodId);
+         const methodRef = doc(db, 'methods', methodId);
+         try {
+             if (isChosen) {
+               await deleteDoc(chosenRef);
+               await updateDoc(methodRef, { 'stats.activeUsers': increment(-1) });
+             } else {
+               await setDoc(chosenRef, {
+                addedAt: serverTimestamp(),
+                attempts: [],
+                status: 'active',
+              });
+              await updateDoc(methodRef, { 'stats.activeUsers': increment(1) });
+             }
+         } catch (err) {
+             console.error("Error toggling method", err);
+         }
     } else {
-      // Choose
-      await setDoc(chosenRef, {
-        addedAt: serverTimestamp(),
-        attempts: [],
-        status: 'active',
-      });
-      await updateDoc(methodRef, { 'stats.activeUsers': increment(1) });
-      setChosenMethodIds(prev => new Set(prev).add(methodId));
-      setMethods(prev => prev.map(m => 
-        m.id === methodId ? { ...m, stats: { ...m.stats, activeUsers: m.stats.activeUsers + 1 } } : m
-      ));
+         // Guest Logic
+         const localMethods = JSON.parse(localStorage.getItem('guest_chosenMethods') || '{}');
+         if (isChosen) {
+             delete localMethods[methodId];
+         } else {
+             localMethods[methodId] = { status: 'active', addedAt: new Date().toISOString() };
+         }
+         localStorage.setItem('guest_chosenMethods', JSON.stringify(localMethods));
     }
   };
   
@@ -144,7 +172,7 @@ function MethodsPageContent({ params }: { params: PageParams }) {
   
   const handleCreateMethod = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!user || !newMethod.title.trim()) return;
+    if (!newMethod.title.trim()) return;
     
     setIsCreating(true);
     
@@ -154,40 +182,70 @@ function MethodsPageContent({ params }: { params: PageParams }) {
         .filter(r => r.title.trim() || r.url.trim())
         .map(r => ({ ...r, id: crypto.randomUUID() }));
       
-      const methodDoc = await addDoc(collection(db, 'methods'), {
-        goalId,
-        title: newMethod.title.trim(),
-        description: newMethod.description.trim(),
-        resources: resourcesWithIds,
-        suggestedMinimum: newMethod.suggestedMinimum,
-        createdBy: user.uid,
-        createdAt: serverTimestamp(),
-        stats: { activeUsers: 1, avgRating: 0, reviewCount: 0 },
-        isPrivate: isPrivateMode,
-      });
-      
-      // Add to local state
-      const createdMethod: Method = {
-        id: methodDoc.id,
-        goalId,
-        title: newMethod.title.trim(),
-        description: newMethod.description.trim(),
-        resources: resourcesWithIds,
-        suggestedMinimum: newMethod.suggestedMinimum,
-        createdBy: user.uid,
-        createdAt: new Date(),
-        stats: { activeUsers: 1, avgRating: 0, reviewCount: 0 },
-      };
-      
-      setMethods(prev => [createdMethod, ...prev]);
-      
-      // Auto-choose the new method
-      await setDoc(doc(db, 'users', user.uid, 'chosenMethods', methodDoc.id), {
-        addedAt: serverTimestamp(),
-        attempts: [],
-        status: 'active',
-      });
-      setChosenMethodIds(prev => new Set(prev).add(methodDoc.id));
+      if (user) {
+          const methodDoc = await addDoc(collection(db, 'methods'), {
+            goalId,
+            title: newMethod.title.trim(),
+            description: newMethod.description.trim(),
+            resources: resourcesWithIds,
+            suggestedMinimum: newMethod.suggestedMinimum,
+            createdBy: user.uid,
+            createdAt: serverTimestamp(),
+            stats: { activeUsers: 1, avgRating: 0, reviewCount: 0 },
+            isPrivate: isPrivateMode,
+          });
+          
+          // Add to local state
+          const createdMethod: Method = {
+            id: methodDoc.id,
+            goalId,
+            title: newMethod.title.trim(),
+            description: newMethod.description.trim(),
+            resources: resourcesWithIds,
+            suggestedMinimum: newMethod.suggestedMinimum,
+            createdBy: user.uid,
+            createdAt: new Date(),
+            stats: { activeUsers: 1, avgRating: 0, reviewCount: 0 },
+          };
+          
+          setMethods(prev => [createdMethod, ...prev]);
+          
+          // Auto-choose the new method
+          await setDoc(doc(db, 'users', user.uid, 'chosenMethods', methodDoc.id), {
+            addedAt: serverTimestamp(),
+            attempts: [],
+            status: 'active',
+          });
+          setChosenMethodIds(prev => new Set(prev).add(methodDoc.id));
+      } else {
+          // Guest Logic
+          const newId = crypto.randomUUID();
+          const createdMethod: Method = {
+            id: newId,
+            goalId,
+            title: newMethod.title.trim(),
+            description: newMethod.description.trim(),
+            resources: resourcesWithIds,
+            suggestedMinimum: newMethod.suggestedMinimum,
+            createdBy: 'guest',
+            createdAt: new Date(),
+            stats: { activeUsers: 1, avgRating: 0, reviewCount: 0 },
+            isPrivate: isPrivateMode,
+          };
+          
+          // Save locally
+          const localCreated = JSON.parse(localStorage.getItem('guest_createdMethods') || '[]') as Method[];
+          localCreated.push(createdMethod);
+          localStorage.setItem('guest_createdMethods', JSON.stringify(localCreated));
+          
+          // Auto-choose locally
+          const localChosen = JSON.parse(localStorage.getItem('guest_chosenMethods') || '{}');
+          localChosen[newId] = { status: 'active', addedAt: new Date().toISOString() };
+          localStorage.setItem('guest_chosenMethods', JSON.stringify(localChosen));
+          
+          setMethods(prev => [createdMethod, ...prev]);
+          setChosenMethodIds(prev => new Set(prev).add(newId));
+      }
       
       // Reset form
       setNewMethod({

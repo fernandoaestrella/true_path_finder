@@ -41,11 +41,7 @@ function GoalsPageContent() {
   const [isCreating, setIsCreating] = useState(false);
   
   // Redirect if not authenticated
-  useEffect(() => {
-    if (!authLoading && !user) {
-      router.push('/login');
-    }
-  }, [authLoading, user, router]);
+  // Redirect if not authenticated - REMOVED for Guest Mode
 
   // Sync chosen goals from context
   useEffect(() => {
@@ -63,17 +59,47 @@ function GoalsPageContent() {
   
   // Fetch method counts in background
   useEffect(() => {
-    if (!user || modeFilteredGoals.length === 0) return;
+    if (modeFilteredGoals.length === 0) return;
     
     const fetchCounts = async () => {
       try {
         const counts: Record<string, number> = {};
         
+        // Prepare local counts if guest
+        let localCounts: Record<string, number> = {};
+        if (!user) {
+            try {
+                const localMethods = JSON.parse(localStorage.getItem('guest_createdMethods') || '[]') as any[];
+                localMethods.forEach(m => {
+                    if (m.goalId) {
+                        localCounts[m.goalId] = (localCounts[m.goalId] || 0) + 1;
+                    }
+                });
+            } catch (e) {
+                console.error("Error reading local methods", e);
+            }
+        }
+
         await Promise.all(modeFilteredGoals.map(async (goal) => {
-           const methodsRef = collection(db, 'methods');
-           const q = query(methodsRef, where('goalId', '==', goal.id));
-           const snapshot = await getCountFromServer(q);
-           counts[goal.id] = snapshot.data().count;
+           // Firestore count
+           let firestoreCount = 0;
+           // Only query firestore if the goal might be there (optimization, but simple query is fine)
+           // If we are guest and goal is private (local), firestore query returns 0 anyway.
+           // But if we are offline? Firestore might hang? 
+           // Generally fine to query.
+           try {
+               const methodsRef = collection(db, 'methods');
+               const q = query(methodsRef, where('goalId', '==', goal.id));
+               const snapshot = await getCountFromServer(q);
+               firestoreCount = snapshot.data().count;
+           } catch (e) {
+               console.warn("Could not fetch firestore count for goal", goal.id, e);
+           }
+           
+           // If guest, add local count
+           const localCount = !user ? (localCounts[goal.id] || 0) : 0;
+           
+           counts[goal.id] = firestoreCount + localCount;
         }));
         
         setMethodCounts(prev => ({ ...prev, ...counts }));
@@ -92,9 +118,6 @@ function GoalsPageContent() {
   */
   
   const handleToggleGoal = async (goalId: string) => {
-    if (!user) return;
-    
-    const chosenRef = doc(db, 'users', user.uid, 'chosenGoals', goalId);
     
     // Optimistic update
     const isCurrentlyChosen = chosenGoalIds.has(goalId);
@@ -108,66 +131,111 @@ function GoalsPageContent() {
       return next;
     });
 
-    try {
-      if (isCurrentlyChosen) {
-        // Unchoose
-        await deleteDoc(chosenRef);
-      } else {
-        // Choose
-        await setDoc(chosenRef, { addedAt: serverTimestamp() });
-      }
-      // Refresh context in background
-      refreshUserData();
-    } catch (error) {
-       console.error("Error toggling goal", error);
-       // Revert on error
-       setChosenGoalIds(prev => {
-          const next = new Set(prev);
+    if (user) {
+        const chosenRef = doc(db, 'users', user.uid, 'chosenGoals', goalId);
+        try {
           if (isCurrentlyChosen) {
-            next.add(goalId);
+            // Unchoose
+            await deleteDoc(chosenRef);
           } else {
-            next.delete(goalId);
+            // Choose
+            await setDoc(chosenRef, { addedAt: serverTimestamp() });
           }
-          return next;
-       });
+          // Refresh context in background
+          refreshUserData();
+        } catch (error) {
+           console.error("Error toggling goal", error);
+           // Revert on error
+           setChosenGoalIds(prev => {
+              const next = new Set(prev);
+              if (isCurrentlyChosen) {
+                next.add(goalId);
+              } else {
+                next.delete(goalId);
+              }
+              return next;
+           });
+        }
+    } else {
+        // Guest Logic
+        try {
+            const localGoals = JSON.parse(localStorage.getItem('guest_chosenGoals') || '[]') as string[];
+            let newGoals;
+            if (localGoals.includes(goalId)) {
+                newGoals = localGoals.filter(id => id !== goalId);
+            } else {
+                newGoals = [...localGoals, goalId];
+            }
+            localStorage.setItem('guest_chosenGoals', JSON.stringify(newGoals));
+            refreshUserData();
+        } catch (error) {
+            console.error("Error toggling goal locally", error);
+             setChosenGoalIds(prev => {
+              const next = new Set(prev);
+              if (isCurrentlyChosen) {
+                next.add(goalId);
+              } else {
+                next.delete(goalId);
+              }
+              return next;
+           });
+        }
     }
   };
   
   const handleCreateGoal = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!user || !newGoalTitle.trim()) return;
+    if (!newGoalTitle.trim()) return;
     
     setIsCreating(true);
     
     try {
-      const goalDoc = await addDoc(collection(db, 'goals'), {
-        title: newGoalTitle.trim(),
-        description: newGoalDescription.trim(),
-        createdBy: user.uid,
-        createdAt: serverTimestamp(),
-        groupId: 'general',
-        isPrivate: isPrivateMode,
-      });
-      
-      // Add to local state
-      const newGoal: Goal = {
-        id: goalDoc.id,
-        title: newGoalTitle.trim(),
-        description: newGoalDescription.trim(),
-        createdBy: user.uid,
-        createdAt: new Date(),
-        groupId: 'general',
-        isPrivate: isPrivateMode,
-      };
-      
-      // Auto-choose the new goal
-      await setDoc(doc(db, 'users', user.uid, 'chosenGoals', goalDoc.id), {
-        addedAt: serverTimestamp(),
-      });
-      setChosenGoalIds(prev => new Set(prev).add(goalDoc.id));
-      
-      // Initialize count for new goal
-      setMethodCounts(prev => ({ ...prev, [goalDoc.id]: 0 }));
+      if (user) {
+          const goalDoc = await addDoc(collection(db, 'goals'), {
+            title: newGoalTitle.trim(),
+            description: newGoalDescription.trim(),
+            createdBy: user.uid,
+            createdAt: serverTimestamp(),
+            groupId: 'general',
+            isPrivate: isPrivateMode,
+          });
+          
+          // Auto-choose the new goal
+          await setDoc(doc(db, 'users', user.uid, 'chosenGoals', goalDoc.id), {
+            addedAt: serverTimestamp(),
+          });
+          setChosenGoalIds(prev => new Set(prev).add(goalDoc.id));
+          
+          // Initialize count for new goal
+          setMethodCounts(prev => ({ ...prev, [goalDoc.id]: 0 }));
+      } else {
+          // Guest Logic
+          const newId = crypto.randomUUID();
+          const newGoal: Goal = {
+            id: newId,
+            title: newGoalTitle.trim(),
+            description: newGoalDescription.trim(),
+            createdBy: 'guest',
+            createdAt: new Date(),
+            groupId: 'general',
+            isPrivate: true, // Guest created goals are always private/local effectively
+          };
+          
+          // Save to local created goals
+          const localCreated = JSON.parse(localStorage.getItem('guest_createdGoals') || '[]') as Goal[];
+          localCreated.push(newGoal);
+          localStorage.setItem('guest_createdGoals', JSON.stringify(localCreated));
+          
+          // Auto-choose
+          const localChosen = JSON.parse(localStorage.getItem('guest_chosenGoals') || '[]') as string[];
+          if (!localChosen.includes(newId)) {
+              localChosen.push(newId);
+              localStorage.setItem('guest_chosenGoals', JSON.stringify(localChosen));
+          }
+          
+          setChosenGoalIds(prev => new Set(prev).add(newId));
+          setMethodCounts(prev => ({ ...prev, [newId]: 0 }));
+      }
       
       refreshUserData();
       

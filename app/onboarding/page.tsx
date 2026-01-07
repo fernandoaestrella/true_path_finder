@@ -9,7 +9,13 @@ export default function OnboardingPage() {
   
   return (
     <OnboardingFlow 
-      onComplete={() => router.push('/signup')} 
+      onComplete={(mode) => {
+        if (mode === 'guest') {
+          router.push('/dashboard');
+        } else {
+          router.push('/signup');
+        }
+      }} 
     />
   );
 }

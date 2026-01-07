@@ -45,23 +45,30 @@ export function UserDataProvider({ children }: { children: ReactNode }) {
 
   // Define fetch function outside useEffect so it can be exported
   const refreshUserData = useCallback(async () => {
-    // If we only have user, proceeding is fine.
-    
     let fetchedGoals: Goal[] = [];
 
     try {
-      // 0. Fetch all goals (globally useful)
-      // We do this regardless of user to ensure cache is hot for Goals page
-      // But for simplicity/security, we assume auth'd user access
+      // 0. Fetch all goals (Always needed for guests and users)
+      const goalsRef = collection(db, 'goals');
+      const goalsSnap = await getDocs(goalsRef);
+      const goalsData = goalsSnap.docs.map(doc => ({
+        id: doc.id,
+        ...doc.data(),
+        createdAt: doc.data().createdAt?.toDate() || new Date(),
+      })) as Goal[];
+      
+      let finalAllGoals = [...goalsData];
+
+      if (!user) {
+         // Include locally created guest goals
+         const localCreatedGoals = JSON.parse(localStorage.getItem('guest_createdGoals') || '[]') as Goal[];
+         finalAllGoals = [...finalAllGoals, ...localCreatedGoals];
+      }
+      
+      setAllGoals(finalAllGoals);
+
       if (user) {
-         const goalsRef = collection(db, 'goals');
-         const goalsSnap = await getDocs(goalsRef);
-         const goalsData = goalsSnap.docs.map(doc => ({
-           id: doc.id,
-           ...doc.data(),
-           createdAt: doc.data().createdAt?.toDate() || new Date(),
-         })) as Goal[];
-         setAllGoals(goalsData);
+         // --- AUTHENTICATED LOGIC ---
          
          // 1. Fetch chosen goals
          const chosenGoalsRef = collection(db, 'users', user.uid, 'chosenGoals');
@@ -74,96 +81,139 @@ export function UserDataProvider({ children }: { children: ReactNode }) {
           } else {
             setChosenGoals([]);
           }
-      }
 
-      if (!user) return;
-
-      // 2. Fetch chosen methods
-      const chosenMethodsRef = collection(db, 'users', user.uid, 'chosenMethods');
-      const chosenMethodsSnap = await getDocs(query(chosenMethodsRef, where('status', '==', 'active')));
-      
-      const methodShortcuts: Record<string, string> = {};
-      chosenMethodsSnap.docs.forEach(doc => {
-        const data = doc.data();
-        if (data.shortcutResourceId) {
-          methodShortcuts[doc.id] = data.shortcutResourceId;
-        }
-      });
-
-      const methodIds = chosenMethodsSnap.docs.map(doc => doc.id);
-      
-      // Re-access fetchedGoals logic from chosenGoals state or local calculation
-      // Since we just set it above inside 'if (user)', and we returned if (!user), 
-      // we need to access the chosen goals.
-      // Easiest is to retrieve from 'allGoals' via 'chosenGoals' logic again or use the closure variable if lifted.
-      
-      // Let's lift 'fetchedGoals' to outer scope of try block.
-
-      
-      if (methodIds.length > 0) {
-        const methodsRef = collection(db, 'methods');
-        // Optimization: Fetch only needed methods
-        // Firestore 'in' query supports max 10, so if > 10 we might need batches or just fetch all?
-        // For now, let's just fetch all methods to be safe/simple, or optimize to fetch by ID list if small.
-        // Or better: Fetch all methods to cache them for "Goals -> Methods" page too?
-        // Fetching all methods might be too heavy eventually.
-        // Let's stick to current logic: fetch all methods?
-        // Old logic: fetched all methods.
-        const methodsSnap = await getDocs(methodsRef);
-        const methods = methodsSnap.docs
-          .filter(doc => methodIds.includes(doc.id))
-          .map(doc => ({
-            id: doc.id,
-            ...doc.data(),
-            createdAt: doc.data().createdAt?.toDate() || new Date(),
-            stats: doc.data().stats || { activeUsers: 0, avgRating: 0, reviewCount: 0 },
-            shortcutResourceId: methodShortcuts[doc.id]
-          })) as (Method & { shortcutResourceId?: string })[];
+          // 2. Fetch chosen methods
+          const chosenMethodsRef = collection(db, 'users', user.uid, 'chosenMethods');
+          const chosenMethodsSnap = await getDocs(query(chosenMethodsRef, where('status', '==', 'active')));
           
+          const methodShortcuts: Record<string, string> = {};
+          chosenMethodsSnap.docs.forEach(doc => {
+            const data = doc.data();
+            if (data.shortcutResourceId) {
+              methodShortcuts[doc.id] = data.shortcutResourceId;
+            }
+          });
 
-        const grouped = fetchedGoals.map(goal => ({
-          goal,
-          methods: methods.filter(m => m.goalId === goal.id),
-        }));
-        setMethodsByGoal(grouped);
-      } else {
-        setMethodsByGoal(fetchedGoals.map(goal => ({ goal, methods: [] })));
-      }
+          const methodIds = chosenMethodsSnap.docs.map(doc => doc.id);
+          
+          if (methodIds.length > 0) {
+            const methodsRef = collection(db, 'methods');
+            const methodsSnap = await getDocs(methodsRef);
+            const methods = methodsSnap.docs
+              .filter(doc => methodIds.includes(doc.id))
+              .map(doc => ({
+                id: doc.id,
+                ...doc.data(),
+                createdAt: doc.data().createdAt?.toDate() || new Date(),
+                stats: doc.data().stats || { activeUsers: 0, avgRating: 0, reviewCount: 0 },
+                shortcutResourceId: methodShortcuts[doc.id]
+              })) as (Method & { shortcutResourceId?: string })[];
+              
 
-      // 3. Fetch User's RSVPd Events
-      const rsvpsRef = collection(db, 'users', user.uid, 'rsvps');
-      const rsvpsSnap = await getDocs(rsvpsRef);
-      const eventIds = rsvpsSnap.docs.map(doc => doc.data().eventId || doc.id);
-
-      if (eventIds.length > 0) {
-        const eventsData: TPFEvent[] = [];
-        for (const eid of eventIds) {
-          const eventDoc = await getDoc(doc(db, 'events', eid));
-          if (eventDoc.exists()) {
-            const data = eventDoc.data();
-            eventsData.push({
-              id: eventDoc.id,
-              methodId: data.methodId,
-              title: data.title,
-              description: data.description,
-              links: data.links || [],
-              phases: data.phases,
-              startTime: data.startTime?.toDate() || new Date(),
-              maxPerBatch: data.maxPerBatch,
-              repeatability: data.repeatability,
-              createdBy: data.createdBy,
-            } as TPFEvent);
+            const grouped = fetchedGoals.map(goal => ({
+              goal,
+              methods: methods.filter(m => m.goalId === goal.id),
+            }));
+            setMethodsByGoal(grouped);
+          } else {
+            setMethodsByGoal(fetchedGoals.map(goal => ({ goal, methods: [] })));
           }
-        }
-        
-        eventsData.sort((a, b) => {
-          const nextA = getNextEventOccurrence(a)?.getTime() || 0;
-          const nextB = getNextEventOccurrence(b)?.getTime() || 0;
-          return nextA - nextB;
-        });
-        
-        setMyEvents(eventsData.filter(e => getNextEventOccurrence(e) !== null));
+
+          // 3. Fetch User's RSVPd Events
+          const rsvpsRef = collection(db, 'users', user.uid, 'rsvps');
+          const rsvpsSnap = await getDocs(rsvpsRef);
+          const eventIds = rsvpsSnap.docs.map(doc => doc.data().eventId || doc.id);
+
+          if (eventIds.length > 0) {
+            const eventsData: TPFEvent[] = [];
+            for (const eid of eventIds) {
+              const eventDoc = await getDoc(doc(db, 'events', eid));
+              if (eventDoc.exists()) {
+                const data = eventDoc.data();
+                eventsData.push({
+                  id: eventDoc.id,
+                  methodId: data.methodId,
+                  title: data.title,
+                  description: data.description,
+                  links: data.links || [],
+                  phases: data.phases,
+                  startTime: data.startTime?.toDate() || new Date(),
+                  maxPerBatch: data.maxPerBatch,
+                  repeatability: data.repeatability,
+                  createdBy: data.createdBy,
+                  isPrivate: data.isPrivate,
+                } as TPFEvent);
+              }
+            }
+            
+            eventsData.sort((a, b) => {
+              const nextA = getNextEventOccurrence(a)?.getTime() || 0;
+              const nextB = getNextEventOccurrence(b)?.getTime() || 0;
+              return nextA - nextB;
+            });
+            
+            setMyEvents(eventsData.filter(e => getNextEventOccurrence(e) !== null));
+          } else {
+            setMyEvents([]);
+          }
+
       } else {
+        // --- GUEST LOGIC ---
+        
+        // 1. Load chosen goals from localStorage
+        const localGoals = JSON.parse(localStorage.getItem('guest_chosenGoals') || '[]');
+        if (localGoals.length > 0) {
+          fetchedGoals = finalAllGoals.filter(g => localGoals.includes(g.id));
+          setChosenGoals(fetchedGoals);
+        } else {
+          setChosenGoals([]);
+        }
+
+        // 2. Load chosen methods from localStorage
+        const localMethods = JSON.parse(localStorage.getItem('guest_chosenMethods') || '{}');
+        const methodIds = Object.keys(localMethods); // Record<methodId, {status, shortcutResourceId}>
+        
+        if (methodIds.length > 0) {
+            const methodsRef = collection(db, 'methods');
+            const methodsSnap = await getDocs(methodsRef);
+            let methods = methodsSnap.docs
+              .filter(doc => methodIds.includes(doc.id))
+              .map(doc => ({
+                id: doc.id,
+                ...doc.data(),
+                createdAt: doc.data().createdAt?.toDate() || new Date(),
+                stats: doc.data().stats || { activeUsers: 0, avgRating: 0, reviewCount: 0 },
+                shortcutResourceId: localMethods[doc.id]?.shortcutResourceId
+              })) as (Method & { shortcutResourceId?: string })[];
+              
+            // Add local created methods that are chosen
+            const localCreatedMethods = JSON.parse(localStorage.getItem('guest_createdMethods') || '[]') as Method[];
+            const chosenLocalMethods = localCreatedMethods
+                .filter(m => methodIds.includes(m.id))
+                .map(m => ({
+                    ...m,
+                    createdAt: new Date(m.createdAt),
+                    shortcutResourceId: localMethods[m.id]?.shortcutResourceId
+                }));
+            
+            // Merge unique methods (local ones usually stick out, but handle overlaps if any)
+            const combinedMethods = [...methods];
+            chosenLocalMethods.forEach(localM => {
+                if (!combinedMethods.find(m => m.id === localM.id)) {
+                    combinedMethods.push(localM);
+                }
+            });
+              
+            const grouped = fetchedGoals.map(goal => ({
+              goal,
+              methods: combinedMethods.filter(m => m.goalId === goal.id),
+            }));
+            setMethodsByGoal(grouped);
+        } else {
+            setMethodsByGoal(fetchedGoals.map(goal => ({ goal, methods: [] })));
+        }
+
+        // 3. No Events for Guest
         setMyEvents([]);
       }
 
@@ -177,14 +227,7 @@ export function UserDataProvider({ children }: { children: ReactNode }) {
   // Initial fetch
   useEffect(() => {
     if (!authLoading) {
-      if (user) {
-        refreshUserData();
-      } else {
-        setChosenGoals([]);
-        setMethodsByGoal([]);
-        setMyEvents([]);
-        setIsLoading(false);
-      }
+      refreshUserData();
     }
   }, [user, authLoading, refreshUserData]);
 

@@ -121,10 +121,36 @@ const onboardingSteps: OnboardingStep[] = [
       </div>
     ),
   },
+  {
+    title: "Choose your path",
+    content: (
+      <div className="space-y-6 text-[var(--text-secondary)]">
+        <p>
+          You're ready to start. How would you like to begin?
+        </p>
+        
+        <div className="space-y-4">
+          <div className="p-4 rounded-xl border border-[var(--border)] bg-[var(--surface-subtle)]">
+            <h3 className="font-semibold text-[var(--text-primary)] mb-1">Continue as Guest</h3>
+            <p className="text-sm mb-3">Try public goals, methods and view all content. Create private goals, methods and reviews. Data is saved to this device only.</p>
+            <div className="text-xs text-[var(--text-muted)] mt-2">
+              ⚠️ Note: Guest data will NOT transfer if you create an account later.
+              Guests cannot RSVP to public events or participate in their chat.
+            </div>
+          </div>
+
+          <div className="p-4 rounded-xl border border-[var(--primary)] bg-[rgba(var(--primary-rgb),0.05)]">
+            <h3 className="font-semibold text-[var(--text-primary)] mb-1">Create an Account</h3>
+            <p className="text-sm mb-3">Everything a Guest account can do, plus join group text chat in events, and post public reviews.</p>
+          </div>
+        </div>
+      </div>
+    ),
+  },
 ];
 
 interface OnboardingFlowProps {
-  onComplete: () => void;
+  onComplete: (mode?: 'signup' | 'guest') => void;
   actionLabel?: string;
   onExit?: () => void;
 }
@@ -205,10 +231,26 @@ export function OnboardingFlow({ onComplete, actionLabel = 'Get Started', onExit
             ))}
           </div>
           
-          <div className="justify-self-end">
-            <Button onClick={handleNext}>
-              {isLastStep ? actionLabel : 'Next →'}
-            </Button>
+          <div className="justify-self-end flex gap-2">
+            {isLastStep ? (
+              <>
+                 <Button 
+                   variant="secondary" 
+                   onClick={() => onComplete('guest')}
+                 >
+                   Guest
+                 </Button>
+                 <Button 
+                   onClick={() => onComplete('signup')}
+                 >
+                   Create Account
+                 </Button>
+              </>
+            ) : (
+                <Button onClick={handleNext}>
+                  Next →
+                </Button>
+            )}
           </div>
         </div>
       </footer>

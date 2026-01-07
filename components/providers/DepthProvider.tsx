@@ -1,6 +1,6 @@
 'use client';
 
-import { usePathname } from 'next/navigation';
+import { usePathname, useSearchParams } from 'next/navigation';
 import { useEffect } from 'react';
 import { getDepthClassName } from '@/lib/utils/navigationDepth';
 
@@ -12,10 +12,19 @@ import { getDepthClassName } from '@/lib/utils/navigationDepth';
  */
 export function DepthProvider({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
+  const searchParams = useSearchParams();
 
   useEffect(() => {
+    // Check if we are in private mode
+    const isPrivate = pathname.includes('/my-cave') || searchParams.get('private') === 'true';
+
     // Get the depth class name based on current pathname
-    const depthClass = getDepthClassName(pathname);
+    let depthClass = getDepthClassName(pathname);
+    
+    // Only apply progressive darkening if in private mode
+    if (!isPrivate) {
+        depthClass = 'cave-depth-0';
+    }
     
     // Remove any existing depth classes
     document.body.classList.remove(
@@ -33,7 +42,7 @@ export function DepthProvider({ children }: { children: React.ReactNode }) {
     return () => {
       document.body.classList.remove(depthClass);
     };
-  }, [pathname]);
+  }, [pathname, searchParams]);
 
   return <>{children}</>;
 }

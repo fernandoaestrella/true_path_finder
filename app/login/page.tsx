@@ -89,12 +89,32 @@ export default function LoginPage() {
             Sign In
           </Button>
           
-          <p className="text-center text-sm text-[var(--text-muted)]">
+        <p className="text-center text-sm text-[var(--text-muted)]">
             Don&apos;t have an account?{' '}
             <Link href="/onboarding" className="text-[var(--primary)] hover:underline">
               Get started
             </Link>
           </p>
+
+          <div className="relative my-6">
+            <div className="absolute inset-0 flex items-center">
+              <span className="w-full border-t border-[var(--border)]" />
+            </div>
+            <div className="relative flex justify-center text-xs uppercase">
+              <span className="bg-[var(--background)] px-2 text-[var(--text-muted)]">
+                Or
+              </span>
+            </div>
+          </div>
+
+          <Button
+            type="button"
+            variant="secondary"
+            className="w-full"
+            onClick={() => router.push('/dashboard')}
+          >
+            Continue as Guest
+          </Button>
         </form>
       </div>
     </div>
