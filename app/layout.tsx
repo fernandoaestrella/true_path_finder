@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import { Inter } from "next/font/google";
+import { Suspense } from "react";
 import "./globals.css";
 import { AuthProvider } from "@/lib/contexts/AuthContext";
 import { TimerProvider } from "@/lib/contexts/TimerContext";
@@ -28,9 +29,11 @@ export default function RootLayout({
         <AuthProvider>
           <UserDataProvider>
             <TimerProvider>
-              <DepthProvider>
-                {children}
-              </DepthProvider>
+              <Suspense fallback={null}>
+                <DepthProvider>
+                  {children}
+                </DepthProvider>
+              </Suspense>
             </TimerProvider>
           </UserDataProvider>
         </AuthProvider>
